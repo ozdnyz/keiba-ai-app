@@ -539,4 +539,3 @@ elif menu == "レース予測・自動実行":
                     except Exception as e:
                         status.update(label="エラーが発生しました", state="error")
                         st.error(f"詳細: {str(e)}")
-"""
