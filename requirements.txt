@@ -1,0 +1,7 @@
+streamlit==1.31.1
+selenium==4.17.2
+chromedriver-autoinstaller==0.6.3
+beautifulsoup4==4.12.3
+gspread==6.0.0
+pandas==2.2.0
+altair==5.2.0
