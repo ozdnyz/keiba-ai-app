@@ -1,5 +1,4 @@
 import streamlit as st
-import chromedriver_autoinstaller
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
@@ -11,7 +10,7 @@ import altair as alt
 from datetime import datetime
 
 # ==========================================
-# 🔐 Googleスプレッドシート認証（クラウド対応版）
+# 🔐 Googleスプレッドシート認証
 # ==========================================
 creds_dict = st.secrets["gcp_service_account"]
 gc = gspread.service_account_from_dict(creds_dict)
@@ -89,16 +88,27 @@ def run_ai_core(df, track_cond):
     return df, True, honmei, taikou, tana, himo, buy_count, ai_invest, ai_return, ai_profit, ai_roi, profit_color, sign, race_rank, max_exp, honmei_exp
 
 # ==========================================
-# 🛠️ ブラウザ起動モジュール
+# 🛠️ ブラウザ起動モジュール (クラウド強化版)
 # ==========================================
 def get_driver():
-    chromedriver_autoinstaller.install()
     options = Options()
     options.add_argument('--headless=new')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
-    return webdriver.Chrome(options=options)
+    options.add_argument('--window-size=1920,1080')
+    
+    try:
+        # Streamlit Cloud環境用 (packages.txtで入れたブラウザを使用)
+        from selenium.webdriver.chrome.service import Service
+        service = Service('/usr/bin/chromedriver')
+        options.binary_location = '/usr/bin/chromium'
+        return webdriver.Chrome(service=service, options=options)
+    except Exception:
+        # ローカル(Colab等)用のフォールバック
+        import chromedriver_autoinstaller
+        chromedriver_autoinstaller.install()
+        return webdriver.Chrome(options=options)
 
 # ==========================================
 # 🛠️ 1レース解析用の共通モジュール
@@ -259,10 +269,8 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     for _, r in score_df.iterrows():
         final_matrix.append([r['馬番'], r['馬名'], str(r['単勝オッズ']), str(r['実力順位(RL)']), str(r['適正順位(CL)'])])
         
-    # 🌟 バグ修正: スプレッドシートからの再読込をやめ、直接DataFrame化することで表示のズレを完全に防止
     df_fresh = pd.DataFrame(final_matrix, columns=['馬番', '馬名', '単勝オッズ', '実力順位(RL)', '適正順位(CL)'])
 
-    # スプレッドシートへの保存はバックグラウンドで処理
     try:
         clear_data = [["", "", "", "", ""] for _ in range(24)]
         analysis_sheet.update(range_name='A2:E25', values=clear_data, value_input_option='USER_ENTERED')
@@ -407,7 +415,6 @@ elif menu == "レース予測・自動実行":
     with tab1:
         st.write("netkeibaから本日のレース一覧をスキャンし、指定した競馬場のレースを連続解析します。")
         
-        # 🌟 NEW: デフォルト未選択＆会場ごとの詳細チェック機能
         col_c1, col_c2 = st.columns(2)
         with col_c1:
             scan_jra = st.checkbox("🟢 中央競馬 (JRA) を取得する", value=False)
@@ -422,7 +429,6 @@ elif menu == "レース予測・自動実行":
                 selected_nar_places = st.multiselect("取得する会場を選択 (地方)", ["大井", "水沢", "盛岡", "川崎", "船橋", "浦和", "園田", "姫路", "高知", "佐賀", "門別", "名古屋", "笠松", "金沢"], default=[])
             
         if st.button("🌅 【自動化】選択した条件で全レースをスキャン開始", use_container_width=True):
-            # 🌟 NEW: 会場コードのフィルタリング
             valid_place_codes = []
             place_map_jra = {"01":"札幌", "02":"函館", "03":"福島", "04":"新潟", "05":"東京", "06":"中山", "07":"中京", "08":"京都", "09":"阪神", "10":"小倉"}
             place_map_nar = {"30":"大井", "31":"水沢", "32":"盛岡", "35":"川崎", "36":"船橋", "37":"浦和", "42":"園田", "43":"姫路", "50":"高知", "54":"佐賀", "65":"門別", "21":"名古屋", "22":"笠松", "23":"金沢"}
@@ -454,12 +460,13 @@ elif menu == "レース予測・自動実行":
                                 match = re.search(r'race_id=(\d{12})', a['href'])
                                 if match:
                                     r_id = match.group(1)
-                                    # 🌟 NEW: 選択した会場のレースだけを抽出リストに追加
                                     if r_id[4:6] in valid_place_codes:
                                         if r_id not in race_ids: race_ids.append(r_id)
                         
                         race_ids.sort()
-                        if not race_ids: raise Exception("選択した会場の本日のレースが見つかりませんでした。")
+                        if not race_ids: 
+                            places = ", ".join(selected_jra_places + selected_nar_places)
+                            raise Exception(f"本日、選択した会場（{places}）でのレース開催が見つかりませんでした。開催日をご確認ください。")
                         
                         st.write(f"✅ 条件に一致する {len(race_ids)}件のレースを発見しました。解析を開始します...")
                         
