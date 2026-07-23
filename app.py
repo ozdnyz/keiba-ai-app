@@ -129,13 +129,14 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
         soup = BeautifulSoup(driver.page_source, 'html.parser')
 
     place_code = race_id[4:6] if len(race_id) >= 12 else ""
-    place_map = {"01":"札幌", "02":"函館", "03":"福島", "04":"新潟", "05":"東京", "06":"中山", "07":"中京", "08":"京都", "09":"阪神", "10":"小倉"}
+    place_map = {"01":"札幌", "02":"函館", "03":"福島", "04":"新潟", "05":"東京", "06":"中山", "07":"中京", "08":"京都", "09":"阪神", "10":"小倉", "30":"大井", "31":"水沢", "32":"盛岡", "35":"川崎", "36":"船橋", "37":"浦和", "42":"園田", "43":"姫路", "50":"高知", "54":"佐賀", "65":"門別", "21":"名古屋", "22":"笠松", "23":"金沢"}
     place_str = place_map.get(place_code, "競馬場")
-    
+    r_num_str = str(int(race_id[10:12])) + "R" if len(race_id) >= 12 else ""
+
     race_name_element = soup.find(class_='RaceName')
     if race_name_element:
         pure_race_name = re.sub(r'\s+', ' ', race_name_element.text.strip())
-        race_name = f"{pure_race_name} (ID:{race_id})"
+        race_name = f"{place_str}{r_num_str} {pure_race_name}"
     else:
         race_name = f"レースID: {race_id}"
     
@@ -162,7 +163,8 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
                     horse_links[name] = href
     
     if not horse_list: 
-        raise Exception("出馬表の取得に失敗しました。馬番が未発表か、レースが存在しません。")
+        if domain == "race.netkeiba.com": raise Exception("馬番が未発表です（週末のレースは木・金曜に確定します）")
+        else: raise Exception("出馬表の取得に失敗しました。")
     
     horse_list = sorted(horse_list, key=lambda x: int(x[0]))
     
@@ -408,7 +410,6 @@ elif menu == "レース予測・自動実行":
     with tab1:
         st.write("netkeibaから指定した日付のレース一覧をスキャンし、連続解析します。過去のレース検証にも使えます。")
         
-        # 🌟 NEW: 日付指定カレンダーを追加
         target_date = st.date_input("📅 取得する開催日を選択してください", datetime.today())
         date_str = target_date.strftime("%Y%m%d")
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
@@ -427,20 +428,34 @@ elif menu == "レース予測・自動実行":
                 selected_nar_places = st.multiselect("取得する会場を選択 (地方)", ["大井", "水沢", "盛岡", "川崎", "船橋", "浦和", "園田", "姫路", "高知", "佐賀", "門別", "名古屋", "笠松", "金沢"], default=[])
             
         if st.button(f"🌅 【自動化】{target_date.strftime('%Y年%m月%d日')}のレースをスキャン開始", use_container_width=True):
+            valid_place_codes = []
+            place_map_jra = {"01":"札幌", "02":"函館", "03":"福島", "04":"新潟", "05":"東京", "06":"中山", "07":"中京", "08":"京都", "09":"阪神", "10":"小倉"}
+            place_map_nar = {"30":"大井", "31":"水沢", "32":"盛岡", "35":"川崎", "36":"船橋", "37":"浦和", "42":"園田", "43":"姫路", "50":"高知", "54":"佐賀", "65":"門別", "21":"名古屋", "22":"笠松", "23":"金沢"}
+            
+            inv_jra = {v: k for k, v in place_map_jra.items()}
+            inv_nar = {v: k for k, v in place_map_nar.items()}
+            
+            if scan_jra: valid_place_codes.extend([inv_jra[p] for p in selected_jra_places])
+            if scan_nar: valid_place_codes.extend([inv_nar[p] for p in selected_nar_places])
+
             if not scan_jra and not scan_nar:
                 st.warning("取得する競馬（中央または地方）にチェックを入れてください。")
-            elif (scan_jra and not selected_jra_places) and (scan_nar and not selected_nar_places):
+            elif not valid_place_codes:
                 st.warning("取得する会場を1つ以上選択してください。")
             else:
                 with st.status(f"🌐 {target_date.strftime('%Y/%m/%d')}の全レースリストを取得中...", expanded=True) as status:
                     try:
                         driver = get_driver()
-                        all_race_ids = []
+                        race_ids = []
                         urls_to_scan = []
                         
-                        # 日付指定URLで確実にその日のデータを取得
-                        if scan_jra: urls_to_scan.append(f"https://race.netkeiba.com/top/race_list.html?kaisai_date={date_str}")
-                        if scan_nar: urls_to_scan.append(f"https://nar.netkeiba.com/top/race_list.html?kaisai_date={date_str}")
+                        # 🌟 最強の修正点：出馬表と結果一覧の両方をスキャンし、夜の取りこぼしを完全防止！
+                        if scan_jra: 
+                            urls_to_scan.append(f"https://race.netkeiba.com/top/race_list.html?kaisai_date={date_str}")
+                            urls_to_scan.append(f"https://race.netkeiba.com/top/result_list.html?kaisai_date={date_str}")
+                        if scan_nar: 
+                            urls_to_scan.append(f"https://nar.netkeiba.com/top/race_list.html?kaisai_date={date_str}")
+                            urls_to_scan.append(f"https://nar.netkeiba.com/top/result_list.html?kaisai_date={date_str}")
                         
                         for url in urls_to_scan:
                             driver.get(url)
@@ -450,37 +465,13 @@ elif menu == "レース予測・自動実行":
                                 match = re.search(r'race_id=(\d{12})', a['href'])
                                 if match:
                                     r_id = match.group(1)
-                                    if r_id not in all_race_ids: all_race_ids.append(r_id)
+                                    # 選択された会場コードと一致するものだけをリストに追加
+                                    if r_id[4:6] in valid_place_codes:
+                                        if r_id not in race_ids: race_ids.append(r_id)
                         
-                        # 🌟 NEW: 番号に頼らず、AIが実際の会場名を読み取って照合する最強ロジック
-                        venue_groups = {}
-                        for r_id in all_race_ids:
-                            v_code = r_id[4:6]
-                            if v_code not in venue_groups: venue_groups[v_code] = []
-                            venue_groups[v_code].append(r_id)
-                            
-                        race_ids = []
-                        selected_places = selected_jra_places + selected_nar_places
-                        
-                        st.write("🔍 選択された会場名と実際のレースを照合中...")
-                        for v_code, r_ids in venue_groups.items():
-                            test_id = r_ids[0]
-                            domain = "nar.netkeiba.com" if int(v_code) >= 11 else "race.netkeiba.com"
-                            driver.get(f"https://{domain}/race/shutuba.html?race_id={test_id}")
-                            time.sleep(1)
-                            soup = BeautifulSoup(driver.page_source, 'html.parser')
-                            
-                            title_elem = soup.find(class_='RaceName')
-                            if not title_elem: title_elem = soup.find('title')
-                            title_text = title_elem.text if title_elem else ""
-                            
-                            if any(p in title_text for p in selected_places):
-                                race_ids.extend(r_ids)
-                                
                         race_ids.sort()
-                        
                         if not race_ids: 
-                            places = ", ".join(selected_places)
+                            places = ", ".join(selected_jra_places + selected_nar_places)
                             raise Exception(f"{target_date.strftime('%Y年%m月%d日')}に、選択した会場（{places}）でのレース開催が見つかりませんでした。")
                         
                         st.write(f"✅ 条件に一致する {len(race_ids)}件のレースを発見しました。解析を開始します...")
