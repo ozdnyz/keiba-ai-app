@@ -13,7 +13,6 @@ from datetime import datetime
 # ==========================================
 # 🔐 Googleスプレッドシート認証（クラウド対応版）
 # ==========================================
-# StreamlitのSecrets（秘密鍵設定）からJSONを読み込んで認証します
 creds_dict = st.secrets["gcp_service_account"]
 gc = gspread.service_account_from_dict(creds_dict)
 ss_name = "競馬AIシステム_Core"
@@ -90,7 +89,7 @@ def run_ai_core(df, track_cond):
     return df, True, honmei, taikou, tana, himo, buy_count, ai_invest, ai_return, ai_profit, ai_roi, profit_color, sign, race_rank, max_exp, honmei_exp
 
 # ==========================================
-# 🛠️ ブラウザ起動モジュール (クラウド対応版)
+# 🛠️ ブラウザ起動モジュール
 # ==========================================
 def get_driver():
     chromedriver_autoinstaller.install()
@@ -260,13 +259,16 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     for _, r in score_df.iterrows():
         final_matrix.append([r['馬番'], r['馬名'], str(r['単勝オッズ']), str(r['実力順位(RL)']), str(r['適正順位(CL)'])])
         
-    clear_data = [["", "", "", "", ""] for _ in range(24)]
-    analysis_sheet.update(range_name='A2:E25', values=clear_data, value_input_option='USER_ENTERED')
-    analysis_sheet.update(range_name=f'A2:E{1+len(final_matrix)}', values=final_matrix, value_input_option='USER_ENTERED')
-    
-    time.sleep(1)
-    fresh_data = analysis_sheet.get_all_values()
-    df_fresh = pd.DataFrame(fresh_data[1:], columns=fresh_data[0])
+    # 🌟 バグ修正: スプレッドシートからの再読込をやめ、直接DataFrame化することで表示のズレを完全に防止
+    df_fresh = pd.DataFrame(final_matrix, columns=['馬番', '馬名', '単勝オッズ', '実力順位(RL)', '適正順位(CL)'])
+
+    # スプレッドシートへの保存はバックグラウンドで処理
+    try:
+        clear_data = [["", "", "", "", ""] for _ in range(24)]
+        analysis_sheet.update(range_name='A2:E25', values=clear_data, value_input_option='USER_ENTERED')
+        analysis_sheet.update(range_name=f'A2:E{1+len(final_matrix)}', values=final_matrix, value_input_option='USER_ENTERED')
+    except Exception as e:
+        log_text.write(f"※スプレッドシートへの記録をスキップしました: {str(e)}")
     
     _, _, honmei_list, _, _, _, _, _, _, _, _, _, _, race_rank, _, honmei_exp = run_ai_core(df_fresh, "良")
     
@@ -403,19 +405,40 @@ elif menu == "レース予測・自動実行":
     tab1, tab2 = st.tabs(["🚀 本日の全レース一括解析", "🎯 1レース指定解析"])
     
     with tab1:
-        st.write("netkeibaから本日のレース一覧を自動でスキャンし、すべてのレースのオッズ・適性を連続で解析します。")
+        st.write("netkeibaから本日のレース一覧をスキャンし、指定した競馬場のレースを連続解析します。")
         
+        # 🌟 NEW: デフォルト未選択＆会場ごとの詳細チェック機能
         col_c1, col_c2 = st.columns(2)
         with col_c1:
-            scan_jra = st.checkbox("🟢 中央競馬 (JRA) を取得する", value=False, help="※平日は馬番が未確定のためスキップされます")
+            scan_jra = st.checkbox("🟢 中央競馬 (JRA) を取得する", value=False)
+            selected_jra_places = []
+            if scan_jra:
+                selected_jra_places = st.multiselect("取得する会場を選択 (中央)", ["札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"], default=[])
+                
         with col_c2:
-            scan_nar = st.checkbox("🟠 地方競馬 (NAR) を取得する", value=True)
+            scan_nar = st.checkbox("🟠 地方競馬 (NAR) を取得する", value=False)
+            selected_nar_places = []
+            if scan_nar:
+                selected_nar_places = st.multiselect("取得する会場を選択 (地方)", ["大井", "水沢", "盛岡", "川崎", "船橋", "浦和", "園田", "姫路", "高知", "佐賀", "門別", "名古屋", "笠松", "金沢"], default=[])
             
         if st.button("🌅 【自動化】選択した条件で全レースをスキャン開始", use_container_width=True):
+            # 🌟 NEW: 会場コードのフィルタリング
+            valid_place_codes = []
+            place_map_jra = {"01":"札幌", "02":"函館", "03":"福島", "04":"新潟", "05":"東京", "06":"中山", "07":"中京", "08":"京都", "09":"阪神", "10":"小倉"}
+            place_map_nar = {"30":"大井", "31":"水沢", "32":"盛岡", "35":"川崎", "36":"船橋", "37":"浦和", "42":"園田", "43":"姫路", "50":"高知", "54":"佐賀", "65":"門別", "21":"名古屋", "22":"笠松", "23":"金沢"}
+            
+            inv_jra = {v: k for k, v in place_map_jra.items()}
+            inv_nar = {v: k for k, v in place_map_nar.items()}
+            
+            if scan_jra: valid_place_codes.extend([inv_jra[p] for p in selected_jra_places])
+            if scan_nar: valid_place_codes.extend([inv_nar[p] for p in selected_nar_places])
+
             if not scan_jra and not scan_nar:
-                st.warning("取得する競馬（中央または地方）を選択してください。")
+                st.warning("取得する競馬（中央または地方）にチェックを入れてください。")
+            elif not valid_place_codes:
+                st.warning("取得する会場を1つ以上選択してください。")
             else:
-                with st.status("🌐 全レースのリストを取得中...", expanded=True) as status:
+                with st.status("🌐 指定された会場のレースを取得中...", expanded=True) as status:
                     try:
                         driver = get_driver()
                         race_ids = []
@@ -431,12 +454,17 @@ elif menu == "レース予測・自動実行":
                                 match = re.search(r'race_id=(\d{12})', a['href'])
                                 if match:
                                     r_id = match.group(1)
-                                    if r_id not in race_ids: race_ids.append(r_id)
+                                    # 🌟 NEW: 選択した会場のレースだけを抽出リストに追加
+                                    if r_id[4:6] in valid_place_codes:
+                                        if r_id not in race_ids: race_ids.append(r_id)
                         
                         race_ids.sort()
-                        if not race_ids: raise Exception("対象のレースリストが見つかりませんでした。")
+                        if not race_ids: raise Exception("選択した会場の本日のレースが見つかりませんでした。")
                         
-                        st.write(f"✅ {len(race_ids)}件のレースを発見しました。順番に解析を開始します...")
+                        st.write(f"✅ 条件に一致する {len(race_ids)}件のレースを発見しました。解析を開始します...")
+                        
+                        ss = gc.open(ss_name)
+                        analysis_sheet = ss.worksheet("分析シート")
                         
                         overall_progress = st.progress(0)
                         log_text = st.empty()
@@ -445,13 +473,13 @@ elif menu == "レース予測・自動実行":
                         for i, r_id in enumerate(race_ids):
                             st.write(f"▶ {i+1}/{len(race_ids)}: レースID {r_id} を解析開始")
                             try:
-                                fetch_and_analyze_single_race(r_id, driver, gc.open(ss_name).worksheet("分析シート"), sub_progress, log_text, is_batch=True)
+                                fetch_and_analyze_single_race(r_id, driver, analysis_sheet, sub_progress, log_text, is_batch=True)
                             except Exception as e:
                                 st.write(f"⚠️ {r_id}はスキップ: {str(e)}")
                             overall_progress.progress((i + 1) / len(race_ids))
                             
                         driver.quit()
-                        status.update(label="🎉 すべてのレースの解析が完了しました！ダッシュボードをご確認ください。", state="complete", expanded=False)
+                        status.update(label="🎉 選択した全レースの解析が完了しました！ダッシュボードをご確認ください。", state="complete", expanded=False)
                         time.sleep(2)
                         st.rerun()
                     except Exception as e:
