@@ -103,7 +103,7 @@ def get_driver():
     options.add_argument('--disable-blink-features=AutomationControlled')
     options.add_argument('--blink-settings=imagesEnabled=false')
     options.add_argument('--disable-extensions')
-    options.page_load_strategy = 'eager'
+    # eagerを削除し、完全にDOMが構築されるまで安全に待つように変更
     
     try:
         from selenium.webdriver.chrome.service import Service
@@ -180,31 +180,27 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     driver.get(f"https://{domain}/odds/index.html?type=b1&race_id={race_id}")
     
     odds_map = {}
-    # 🌟 究極の修正：オッズが遅れて表示されるのを「待つ」ためのリトライループ
     for _ in range(3):
-        time.sleep(1.5) # 1.5秒ずつ、最大3回（4.5秒）確認しにいく
+        time.sleep(1.5)
         odds_soup = BeautifulSoup(driver.page_source, 'html.parser')
         
         for tr in odds_soup.find_all('tr'):
-            umaban_td = tr.find(class_=re.compile(r'Umaban', re.I))
+            # 🌟 究極の修正：オッズページの馬番クラスは「Umaban」ではなく「Num」になる場合がある！両方に対応。
+            umaban_td = tr.find(class_=re.compile(r'(Umaban|Num)', re.I))
             if umaban_td:
                 u_match = re.search(r'\d+', umaban_td.text)
                 if u_match:
                     u_num = str(int(u_match.group(0)))
-                    odds_tds = tr.find_all(class_=re.compile(r'Odds', re.I))
-                    for td in odds_tds:
+                    for td in tr.find_all(['td', 'span', 'div']):
                         text = td.text.strip()
-                        if '-' not in text:
-                            o_match = re.search(r'([0-9.]+)', text)
-                            if o_match: 
-                                odds_map[u_num] = o_match.group(1)
-                                break
+                        # ハイフンを含まない小数点を純粋な単勝オッズとして認識
+                        if '-' not in text and re.match(r'^[0-9]+\.[0-9]+$', text):
+                            odds_map[u_num] = text
+                            break
                                 
-        # 出走馬の半分以上のオッズが取れていれば「表示完了」とみなして次へ進む
         if len(odds_map) >= len(horse_list) / 2:
             break
                             
-    # それでもダメ（レース終了済などでオッズページが消えている）なら、結果ページから確定オッズを取る
     if not odds_map:
         driver.get(f"https://{domain}/race/result.html?race_id={race_id}")
         time.sleep(1.5)
@@ -243,7 +239,6 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
             full_db_url = "https:" + db_url if not db_url.startswith('http') else db_url
             
             try:
-                # ダイレクト通信（requests）で爆速・軽量化
                 req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}
                 res = requests.get(full_db_url, headers=req_headers, timeout=5)
                 db_soup = BeautifulSoup(res.content, 'html.parser')
