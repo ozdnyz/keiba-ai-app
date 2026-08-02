@@ -6,6 +6,7 @@ import re
 import time
 import random
 import requests
+import json
 import gspread
 import pandas as pd
 import altair as alt
@@ -18,9 +19,62 @@ creds_dict = st.secrets["gcp_service_account"]
 gc = gspread.service_account_from_dict(creds_dict)
 ss_name = "競馬AIシステム_Core"
 
-# セッションメモリの初期化
+# ==========================================
+# 💾 データ永続化（保存と読み込み）モジュール
+# ==========================================
+def save_history_to_sheet(sheet, history_dict):
+    try:
+        # 古い履歴を一旦クリア
+        sheet.batch_clear(["AA1:AA100"])
+        cells = []
+        for r_id, data in history_dict.items():
+            save_data = {
+                r_id: {
+                    'race_name': data['race_name'],
+                    'race_rank': data['race_rank'],
+                    'honmei': data['honmei'],
+                    'honmei_exp': data['honmei_exp'],
+                    'ai_decision': data['ai_decision'],
+                    'df_raw': data['df_raw'].to_dict(orient='records')
+                }
+            }
+            # 1レースごとに1つのセルにJSONとして保存（文字数制限を回避）
+            cells.append([json.dumps(save_data, ensure_ascii=False)])
+            
+        if cells:
+            sheet.update(range_name=f'AA1:AA{len(cells)}', values=cells, value_input_option='USER_ENTERED')
+    except Exception as e:
+        pass
+
+def load_history_from_sheet(sheet):
+    history = {}
+    try:
+        vals = sheet.get('AA1:AA100')
+        for row in vals:
+            if len(row) > 0 and row[0]:
+                save_data = json.loads(row[0])
+                for r_id, data in save_data.items():
+                    history[r_id] = {
+                        'race_name': data['race_name'],
+                        'race_rank': data['race_rank'],
+                        'honmei': data['honmei'],
+                        'honmei_exp': data['honmei_exp'],
+                        'ai_decision': data['ai_decision'],
+                        'df_raw': pd.DataFrame(data['df_raw'])
+                    }
+    except Exception:
+        pass
+    return history
+
+# セッションメモリの初期化（画面更新してもスプレッドシートから復元！）
 if 'race_history' not in st.session_state:
     st.session_state.race_history = {}
+    try:
+        ss = gc.open(ss_name)
+        sheet = ss.worksheet("分析シート")
+        st.session_state.race_history = load_history_from_sheet(sheet)
+    except Exception:
+        pass
 
 # ==========================================
 # 🧠 独自AIエンジン
@@ -90,7 +144,7 @@ def run_ai_core(df, track_cond):
     return df, True, honmei, taikou, tana, himo, buy_count, ai_invest, ai_return, ai_profit, ai_roi, profit_color, sign, race_rank, max_exp, honmei_exp
 
 # ==========================================
-# 🛠️ ブラウザ起動モジュール (偽装ステルス維持)
+# 🛠️ ブラウザ起動モジュール
 # ==========================================
 def get_driver():
     options = Options()
@@ -156,7 +210,6 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     horse_list = []
     odds_map = {}
     
-    # 🌟 NEW 3段構え: 第1段階「出馬表から即時回収」
     for tr in soup.find_all('tr', class_=re.compile(r'HorseList', re.I)):
         td_umaban = tr.find(class_=re.compile(r'Umaban', re.I))
         td_horse = tr.find(class_=re.compile(r'HorseInfo', re.I))
@@ -171,7 +224,6 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
                     horse_list.append([u_num, name])
                     horse_links[name] = href
                 
-                # 出馬表に載っているオッズを狙い撃ち
                 odds_td = tr.find(class_=re.compile(r'Odds', re.I))
                 if odds_td:
                     o_m = re.search(r'([0-9]+\.[0-9]+)', odds_td.text)
@@ -183,7 +235,6 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     
     horse_list = sorted(horse_list, key=lambda x: int(x[0]))
     
-    # 🌟 NEW 3段構え: 第2段階「オッズページで待ち伏せ（未来レース用）」
     if len(odds_map) < len(horse_list) / 2:
         log_text.write("📊 最新オッズを専用ページから取得中...")
         driver.get(f"https://{domain}/odds/index.html?type=b1&race_id={race_id}")
@@ -204,7 +255,6 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
                                 if o_match: odds_map[u_num] = o_match.group(1)
             if len(odds_map) >= len(horse_list) / 2: break
                             
-    # 🌟 NEW 3段構え: 第3段階「結果ページから裏ルート回収（過去レース用）」
     if len(odds_map) < len(horse_list) / 2:
         log_text.write("📊 レース結果から確定オッズを取得中...")
         try:
@@ -247,7 +297,6 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
             full_db_url = "https:" + db_url if not db_url.startswith('http') else db_url
             
             try:
-                # 過去データは引き続き直接通信（requests）で爆速取得
                 req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}
                 res = requests.get(full_db_url, headers=req_headers, timeout=5)
                 db_soup = BeautifulSoup(res.content, 'html.parser')
@@ -460,7 +509,6 @@ elif menu == "レース予測・自動実行":
                     try:
                         driver = None
                         try:
-                            # 🌟 最重要ポイント：1つのブラウザを最後まで使い続け、人間と同じように見せかける
                             driver = get_driver()
                             race_ids = []
                             urls_to_scan = []
@@ -505,8 +553,10 @@ elif menu == "レース予測・自動実行":
                                     st.write(f"⚠️ {r_id}はスキップ: {str(e)}")
                                     
                                 overall_progress.progress((i + 1) / len(race_ids))
-                                time.sleep(random.uniform(2.0, 4.0)) # 人間らしい休憩時間
+                                time.sleep(random.uniform(2.0, 4.0))
                                 
+                            # 🌟 履歴をスプレッドシートに保存（画面更新対策）
+                            save_history_to_sheet(analysis_sheet, st.session_state.race_history)
                             status.update(label="🎉 選択した全レースの解析が完了しました！ダッシュボードをご確認ください。", state="complete", expanded=False)
                             time.sleep(2)
                             st.rerun()
@@ -519,51 +569,113 @@ elif menu == "レース予測・自動実行":
                         st.error(f"詳細: {str(e)}")
 
     with tab2:
-        st.write("特定のレースIDを手動で入力して解析します（過去のレースも可能）。")
-        race_id = st.text_input("🎯 分析するレースIDを入力してください", placeholder="例: 202610020811")
+        # 🌟 UIを「ID直打ち」から「ドロップダウン選択」に大幅変更
+        st.write("指定した日付・競馬場・レース番号から解析します。")
+        col_s1, col_s2, col_s3 = st.columns(3)
+        with col_s1:
+            target_date_single = st.date_input("📅 開催日", datetime.today(), key="single_date")
+            date_str_single = target_date_single.strftime("%Y%m%d")
+        with col_s2:
+            place_map_all = {"01":"札幌", "02":"函館", "03":"福島", "04":"新潟", "05":"東京", "06":"中山", "07":"中京", "08":"京都", "09":"阪神", "10":"小倉", "30":"大井", "31":"水沢", "32":"盛岡", "35":"川崎", "36":"船橋", "37":"浦和", "42":"園田", "43":"姫路", "50":"高知", "54":"佐賀", "65":"門別", "21":"名古屋", "22":"笠松", "23":"金沢"}
+            inv_place_map = {v: k for k, v in place_map_all.items()}
+            place_single = st.selectbox("🏟️ 競馬場", list(inv_place_map.keys()))
+        with col_s3:
+            race_num_single = st.selectbox("🏇 レース番号", [f"{i}R" for i in range(1, 13)])
+            
+        target_place_code = inv_place_map[place_single]
+        target_r_num = str(race_num_single).replace("R", "").zfill(2)
+        is_jra = int(target_place_code) <= 10
+        domain_top = "race.netkeiba.com" if is_jra else "nar.netkeiba.com"
+
         if st.button("🚀 このレースのみを解析"):
-            if not race_id:
-                st.warning("レースIDを入力してください。")
-            else:
-                with st.status("🌐 データを高速取得中...", expanded=True) as status:
-                    driver = None
-                    try:
-                        driver = get_driver()
+            with st.status("🌐 データ取得中...", expanded=True) as status:
+                driver = None
+                try:
+                    driver = get_driver()
+                    
+                    # ユーザーが選んだ条件からレースIDを自動捜索
+                    found_id = None
+                    urls = [
+                        f"https://{domain_top}/top/race_list.html?kaisai_date={date_str_single}",
+                        f"https://{domain_top}/top/result_list.html?kaisai_date={date_str_single}"
+                    ]
+                    for url in urls:
+                        if found_id: break
+                        driver.get(url)
+                        time.sleep(1.5)
+                        soup = BeautifulSoup(driver.page_source, 'html.parser')
+                        for a in soup.find_all('a', href=True):
+                            match = re.search(r'race_id=(\d{12})', a['href'])
+                            if match:
+                                r_id = match.group(1)
+                                if r_id[4:6] == target_place_code and r_id[10:12] == target_r_num:
+                                    found_id = r_id
+                                    break
+                                    
+                    if not found_id:
+                        status.update(label="エラー", state="error")
+                        st.error(f"{target_date_single.strftime('%Y年%m月%d日')}の{place_single}{race_num_single}のレースは見つかりませんでした。")
+                    else:
+                        ss = gc.open(ss_name)
+                        analysis_sheet = ss.worksheet("分析シート")
                         progress_bar = st.progress(0)
                         log_text = st.empty()
-                        fetch_and_analyze_single_race(race_id, driver, gc.open(ss_name).worksheet("分析シート"), progress_bar, log_text, is_batch=False)
-                        status.update(label="🎉 解析が完了しました！ダッシュボードをご確認ください。", state="complete", expanded=False)
+                        
+                        fetch_and_analyze_single_race(found_id, driver, analysis_sheet, progress_bar, log_text, is_batch=False)
+                        
+                        # 🌟 履歴をスプレッドシートに保存（画面更新対策）
+                        save_history_to_sheet(analysis_sheet, st.session_state.race_history)
+                        
+                        status.update(label="🎉 解析完了！ダッシュボードをご確認ください。", state="complete", expanded=False)
                         time.sleep(1.5)
                         st.rerun()
-                    except Exception as e:
-                        status.update(label="エラーが発生しました", state="error")
-                        st.error(f"詳細: {str(e)}")
-                    finally:
-                        if driver:
-                            try: driver.quit()
-                            except: pass
+                except Exception as e:
+                    status.update(label="エラーが発生しました", state="error")
+                    st.error(f"詳細: {str(e)}")
+                finally:
+                    if driver:
+                        try: driver.quit()
+                        except: pass
         
         st.markdown("---")
         st.subheader("【レース後】収支記録")
         if st.button("💰 確定結果＆払戻金を自動取得"):
-            if not race_id: st.warning("レースIDを入力してください。")
-            else:
-                with st.status("レース結果を取得中...", expanded=True) as status:
-                    driver = None
-                    try:
-                        driver = get_driver()
-                        domain = "race.netkeiba.com"
-                        if len(race_id) >= 12 and race_id[4:6].isdigit():
-                            if int(race_id[4:6]) >= 11:
-                                domain = "nar.netkeiba.com"
-                        
-                        driver.get(f"https://{domain}/race/result.html?race_id={race_id}")
+            with st.status("レース情報を特定中...", expanded=True) as status:
+                driver = None
+                try:
+                    driver = get_driver()
+                    
+                    # ユーザーが選んだ条件からレースIDを自動捜索
+                    found_id = None
+                    urls = [
+                        f"https://{domain_top}/top/race_list.html?kaisai_date={date_str_single}",
+                        f"https://{domain_top}/top/result_list.html?kaisai_date={date_str_single}"
+                    ]
+                    for url in urls:
+                        if found_id: break
+                        driver.get(url)
+                        time.sleep(1.5)
+                        soup = BeautifulSoup(driver.page_source, 'html.parser')
+                        for a in soup.find_all('a', href=True):
+                            match = re.search(r'race_id=(\d{12})', a['href'])
+                            if match:
+                                r_id = match.group(1)
+                                if r_id[4:6] == target_place_code and r_id[10:12] == target_r_num:
+                                    found_id = r_id
+                                    break
+
+                    if not found_id:
+                        status.update(label="エラー", state="error")
+                        st.error(f"{target_date_single.strftime('%Y年%m月%d日')}の{place_single}{race_num_single}のレースは見つかりませんでした。")
+                    else:
+                        status.update(label="結果を取得中...")
+                        driver.get(f"https://{domain_top}/race/result.html?race_id={found_id}")
                         time.sleep(2)
                         soup = BeautifulSoup(driver.page_source, 'html.parser')
                         
                         if not soup.find('table', class_=re.compile(r'RaceTable', re.I)):
-                            domain = "nar.netkeiba.com" if domain == "race.netkeiba.com" else "race.netkeiba.com"
-                            driver.get(f"https://{domain}/race/result.html?race_id={race_id}")
+                            fallback_domain = "nar.netkeiba.com" if domain_top == "race.netkeiba.com" else "race.netkeiba.com"
+                            driver.get(f"https://{fallback_domain}/race/result.html?race_id={found_id}")
                             time.sleep(2)
                             soup = BeautifulSoup(driver.page_source, 'html.parser')
 
@@ -581,7 +693,8 @@ elif menu == "レース予測・自動実行":
                                 if match: tansho_payout = match.group(1).replace(",", "")
                                 break
                                     
-                        analysis_sheet = gc.open(ss_name).worksheet("分析シート")
+                        ss = gc.open(ss_name)
+                        analysis_sheet = ss.worksheet("分析シート")
                         existing_horses = analysis_sheet.get('A2:B25')
                         q_data, r_data = [], []
                         for row in existing_horses:
@@ -599,10 +712,10 @@ elif menu == "レース予測・自動実行":
                         status.update(label="💰 記録完了！", state="complete", expanded=False)
                         time.sleep(1.5)
                         st.rerun()
-                    except Exception as e:
-                        status.update(label="エラーが発生しました", state="error")
-                        st.error(f"詳細: {str(e)}")
-                    finally:
-                        if driver:
-                            try: driver.quit()
-                            except: pass
+                except Exception as e:
+                    status.update(label="エラーが発生しました", state="error")
+                    st.error(f"詳細: {str(e)}")
+                finally:
+                    if driver:
+                        try: driver.quit()
+                        except: pass
