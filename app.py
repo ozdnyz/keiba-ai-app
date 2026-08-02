@@ -90,7 +90,7 @@ def run_ai_core(df, track_cond):
     return df, True, honmei, taikou, tana, himo, buy_count, ai_invest, ai_return, ai_profit, ai_roi, profit_color, sign, race_rank, max_exp, honmei_exp
 
 # ==========================================
-# 🛠️ ブラウザ起動モジュール
+# 🛠️ ブラウザ起動モジュール (偽装ステルス維持)
 # ==========================================
 def get_driver():
     options = Options()
@@ -103,7 +103,6 @@ def get_driver():
     options.add_argument('--disable-blink-features=AutomationControlled')
     options.add_argument('--blink-settings=imagesEnabled=false')
     options.add_argument('--disable-extensions')
-    # eagerを削除し、完全にDOMが構築されるまで安全に待つように変更
     
     try:
         from selenium.webdriver.chrome.service import Service
@@ -126,13 +125,13 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
 
     log_text.write(f"🔍 出馬表と開催会場を解析中...")
     driver.get(f"https://{domain}/race/shutuba.html?race_id={race_id}")
-    time.sleep(1.5)
+    time.sleep(2.0)
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     
     if not soup.find('tr', class_=re.compile(r'HorseList', re.I)):
         domain = "nar.netkeiba.com" if domain == "race.netkeiba.com" else "race.netkeiba.com"
         driver.get(f"https://{domain}/race/shutuba.html?race_id={race_id}")
-        time.sleep(1.5)
+        time.sleep(2.0)
         soup = BeautifulSoup(driver.page_source, 'html.parser')
 
     place_code = race_id[4:6] if len(race_id) >= 12 else ""
@@ -155,7 +154,9 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     
     horse_links = {}
     horse_list = []
+    odds_map = {}
     
+    # 🌟 NEW 3段構え: 第1段階「出馬表から即時回収」
     for tr in soup.find_all('tr', class_=re.compile(r'HorseList', re.I)):
         td_umaban = tr.find(class_=re.compile(r'Umaban', re.I))
         td_horse = tr.find(class_=re.compile(r'HorseInfo', re.I))
@@ -169,6 +170,12 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
                 if name and u_num and [u_num, name] not in horse_list:
                     horse_list.append([u_num, name])
                     horse_links[name] = href
+                
+                # 出馬表に載っているオッズを狙い撃ち
+                odds_td = tr.find(class_=re.compile(r'Odds', re.I))
+                if odds_td:
+                    o_m = re.search(r'([0-9]+\.[0-9]+)', odds_td.text)
+                    if o_m: odds_map[u_num] = o_m.group(1)
     
     if not horse_list: 
         if domain == "race.netkeiba.com": raise Exception("馬番が未発表です（週末のレースは木・金曜に確定します）")
@@ -176,49 +183,50 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     
     horse_list = sorted(horse_list, key=lambda x: int(x[0]))
     
-    log_text.write("📊 最新オッズを取得中...")
-    driver.get(f"https://{domain}/odds/index.html?type=b1&race_id={race_id}")
-    
-    odds_map = {}
-    for _ in range(3):
-        time.sleep(1.5)
-        odds_soup = BeautifulSoup(driver.page_source, 'html.parser')
-        
-        for tr in odds_soup.find_all('tr'):
-            # 🌟 究極の修正：オッズページの馬番クラスは「Umaban」ではなく「Num」になる場合がある！両方に対応。
-            umaban_td = tr.find(class_=re.compile(r'(Umaban|Num)', re.I))
-            if umaban_td:
-                u_match = re.search(r'\d+', umaban_td.text)
-                if u_match:
-                    u_num = str(int(u_match.group(0)))
-                    for td in tr.find_all(['td', 'span', 'div']):
-                        text = td.text.strip()
-                        # ハイフンを含まない小数点を純粋な単勝オッズとして認識
-                        if '-' not in text and re.match(r'^[0-9]+\.[0-9]+$', text):
-                            odds_map[u_num] = text
-                            break
-                                
-        if len(odds_map) >= len(horse_list) / 2:
-            break
+    # 🌟 NEW 3段構え: 第2段階「オッズページで待ち伏せ（未来レース用）」
+    if len(odds_map) < len(horse_list) / 2:
+        log_text.write("📊 最新オッズを専用ページから取得中...")
+        driver.get(f"https://{domain}/odds/index.html?type=b1&race_id={race_id}")
+        for _ in range(3):
+            time.sleep(1.5)
+            odds_soup = BeautifulSoup(driver.page_source, 'html.parser')
+            for tr in odds_soup.find_all('tr'):
+                umaban_td = tr.find(class_=re.compile(r'(Umaban|Num|Waku)', re.I))
+                if umaban_td:
+                    u_match = re.search(r'\d+', umaban_td.text)
+                    if u_match:
+                        u_num = str(int(u_match.group(0)))
+                        odds_td = tr.find(class_=re.compile(r'Odds', re.I))
+                        if odds_td:
+                            text = odds_td.text.strip()
+                            if '-' not in text:
+                                o_match = re.search(r'([0-9]+\.[0-9]+)', text)
+                                if o_match: odds_map[u_num] = o_match.group(1)
+            if len(odds_map) >= len(horse_list) / 2: break
                             
-    if not odds_map:
-        driver.get(f"https://{domain}/race/result.html?race_id={race_id}")
-        time.sleep(1.5)
-        res_soup = BeautifulSoup(driver.page_source, 'html.parser')
-        result_table = res_soup.find('table', class_='RaceTable01')
-        if result_table:
-            headers = result_table.find_all('th')
-            odds_idx, umaban_idx = -1, -1
-            for i, th in enumerate(headers):
-                if '単勝' in th.text: odds_idx = i
-                if '馬番' in th.text: umaban_idx = i
-            if odds_idx != -1 and umaban_idx != -1:
-                for tr in result_table.find_all('tr'):
-                    tds = tr.find_all('td')
-                    if len(tds) > max(odds_idx, umaban_idx):
-                        u_match = re.search(r'\d+', tds[umaban_idx].text.strip())
-                        o_match = re.search(r'([0-9.]+)', tds[odds_idx].text.strip())
-                        if u_match and o_match: odds_map[str(int(u_match.group(0)))] = o_match.group(1)
+    # 🌟 NEW 3段構え: 第3段階「結果ページから裏ルート回収（過去レース用）」
+    if len(odds_map) < len(horse_list) / 2:
+        log_text.write("📊 レース結果から確定オッズを取得中...")
+        try:
+            req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+            res = requests.get(f"https://{domain}/race/result.html?race_id={race_id}", headers=req_headers, timeout=5)
+            res_soup = BeautifulSoup(res.content, 'html.parser')
+            result_table = res_soup.find('table', class_=re.compile(r'RaceTable', re.I))
+            if result_table:
+                headers_th = result_table.find_all('th')
+                odds_idx, umaban_idx = -1, -1
+                for i, th in enumerate(headers_th):
+                    if '単勝' in th.text: odds_idx = i
+                    if '馬番' in th.text: umaban_idx = i
+                if odds_idx != -1 and umaban_idx != -1:
+                    for tr in result_table.find_all('tr'):
+                        tds = tr.find_all('td')
+                        if len(tds) > max(odds_idx, umaban_idx):
+                            u_match = re.search(r'\d+', tds[umaban_idx].text.strip())
+                            o_match = re.search(r'([0-9.]+)', tds[odds_idx].text.strip())
+                            if u_match and o_match: odds_map[str(int(u_match.group(0)))] = o_match.group(1)
+        except Exception:
+            pass
     
     total_horses = len(horse_list)
     current_idx = 0
@@ -239,6 +247,7 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
             full_db_url = "https:" + db_url if not db_url.startswith('http') else db_url
             
             try:
+                # 過去データは引き続き直接通信（requests）で爆速取得
                 req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}
                 res = requests.get(full_db_url, headers=req_headers, timeout=5)
                 db_soup = BeautifulSoup(res.content, 'html.parser')
@@ -449,9 +458,10 @@ elif menu == "レース予測・自動実行":
             else:
                 with st.status(f"🌐 {target_date.strftime('%Y/%m/%d')}の全レースリストを取得中...", expanded=True) as status:
                     try:
-                        init_driver = None
+                        driver = None
                         try:
-                            init_driver = get_driver()
+                            # 🌟 最重要ポイント：1つのブラウザを最後まで使い続け、人間と同じように見せかける
+                            driver = get_driver()
                             race_ids = []
                             urls_to_scan = []
                             
@@ -463,53 +473,47 @@ elif menu == "レース予測・自動実行":
                                 urls_to_scan.append(f"https://nar.netkeiba.com/top/result_list.html?kaisai_date={date_str}")
                             
                             for url in urls_to_scan:
-                                init_driver.get(url)
+                                driver.get(url)
                                 time.sleep(2)
-                                soup = BeautifulSoup(init_driver.page_source, 'html.parser')
+                                soup = BeautifulSoup(driver.page_source, 'html.parser')
                                 for a in soup.find_all('a', href=True):
                                     match = re.search(r'race_id=(\d{12})', a['href'])
                                     if match:
                                         r_id = match.group(1)
                                         if r_id[4:6] in valid_place_codes:
                                             if r_id not in race_ids: race_ids.append(r_id)
-                        finally:
-                            if init_driver:
-                                try: init_driver.quit()
-                                except: pass
-                        
-                        race_ids.sort()
-                        if not race_ids: 
-                            places = ", ".join(selected_jra_places + selected_nar_places)
-                            raise Exception(f"{target_date.strftime('%Y年%m月%d日')}に、選択した会場（{places}）でのレース開催が見つかりませんでした。")
-                        
-                        st.write(f"✅ 条件に一致する {len(race_ids)}件のレースを発見しました。解析を開始します...")
-                        
-                        ss = gc.open(ss_name)
-                        analysis_sheet = ss.worksheet("分析シート")
-                        
-                        overall_progress = st.progress(0)
-                        log_text = st.empty()
-                        sub_progress = st.progress(0)
-                        
-                        for i, r_id in enumerate(race_ids):
-                            st.write(f"▶ {i+1}/{len(race_ids)}: レースID {r_id} を解析開始")
-                            race_driver = None
-                            try:
-                                race_driver = get_driver()
-                                fetch_and_analyze_single_race(r_id, race_driver, analysis_sheet, sub_progress, log_text, is_batch=True)
-                            except Exception as e:
-                                st.write(f"⚠️ {r_id}はスキップ: {str(e)}")
-                            finally:
-                                if race_driver:
-                                    try: race_driver.quit()
-                                    except: pass
-                                    
-                            overall_progress.progress((i + 1) / len(race_ids))
-                            time.sleep(random.uniform(1.0, 2.5))
+                                            
+                            race_ids.sort()
+                            if not race_ids: 
+                                places = ", ".join(selected_jra_places + selected_nar_places)
+                                raise Exception(f"{target_date.strftime('%Y年%m月%d日')}に、選択した会場（{places}）でのレース開催が見つかりませんでした。")
                             
-                        status.update(label="🎉 選択した全レースの解析が完了しました！ダッシュボードをご確認ください。", state="complete", expanded=False)
-                        time.sleep(2)
-                        st.rerun()
+                            st.write(f"✅ 条件に一致する {len(race_ids)}件のレースを発見しました。解析を開始します...")
+                            
+                            ss = gc.open(ss_name)
+                            analysis_sheet = ss.worksheet("分析シート")
+                            
+                            overall_progress = st.progress(0)
+                            log_text = st.empty()
+                            sub_progress = st.progress(0)
+                            
+                            for i, r_id in enumerate(race_ids):
+                                st.write(f"▶ {i+1}/{len(race_ids)}: レースID {r_id} を解析開始")
+                                try:
+                                    fetch_and_analyze_single_race(r_id, driver, analysis_sheet, sub_progress, log_text, is_batch=True)
+                                except Exception as e:
+                                    st.write(f"⚠️ {r_id}はスキップ: {str(e)}")
+                                    
+                                overall_progress.progress((i + 1) / len(race_ids))
+                                time.sleep(random.uniform(2.0, 4.0)) # 人間らしい休憩時間
+                                
+                            status.update(label="🎉 選択した全レースの解析が完了しました！ダッシュボードをご確認ください。", state="complete", expanded=False)
+                            time.sleep(2)
+                            st.rerun()
+                        finally:
+                            if driver:
+                                try: driver.quit()
+                                except: pass
                     except Exception as e:
                         status.update(label="エラーが発生しました", state="error")
                         st.error(f"詳細: {str(e)}")
