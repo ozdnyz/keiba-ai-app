@@ -20,11 +20,10 @@ gc = gspread.service_account_from_dict(creds_dict)
 ss_name = "競馬AIシステム_Core"
 
 # ==========================================
-# 💾 データ永続化（保存と読み込み）モジュール
+# 💾 データ永続化＆過去データ蓄積モジュール
 # ==========================================
 def save_history_to_sheet(sheet, history_dict):
     try:
-        # 古い履歴を一旦クリア
         sheet.batch_clear(["AA1:AA100"])
         cells = []
         for r_id, data in history_dict.items():
@@ -38,12 +37,10 @@ def save_history_to_sheet(sheet, history_dict):
                     'df_raw': data['df_raw'].to_dict(orient='records')
                 }
             }
-            # 1レースごとに1つのセルにJSONとして保存（文字数制限を回避）
             cells.append([json.dumps(save_data, ensure_ascii=False)])
-            
         if cells:
             sheet.update(range_name=f'AA1:AA{len(cells)}', values=cells, value_input_option='USER_ENTERED')
-    except Exception as e:
+    except Exception:
         pass
 
 def load_history_from_sheet(sheet):
@@ -66,7 +63,6 @@ def load_history_from_sheet(sheet):
         pass
     return history
 
-# セッションメモリの初期化（画面更新してもスプレッドシートから復元！）
 if 'race_history' not in st.session_state:
     st.session_state.race_history = {}
     try:
@@ -77,7 +73,7 @@ if 'race_history' not in st.session_state:
         pass
 
 # ==========================================
-# 🧠 独自AIエンジン
+# 🧠 独自AIエンジン (1番固定バグ修正版)
 # ==========================================
 def run_ai_core(df, track_cond):
     if df.empty or '実力順位(RL)' not in df.columns or '適正順位(CL)' not in df.columns:
@@ -92,12 +88,17 @@ def run_ai_core(df, track_cond):
     df['CL'] = pd.to_numeric(df['適正順位(CL)'], errors='coerce').fillna(99)
     
     df['AIスコア'] = (df['RL'] * 0.7) + (df['CL'] * 0.3)
-    df_sorted = df.sort_values('AIスコア').reset_index()
+    
+    # 🌟 修正1：同点の場合はオッズが低い（人気）順にするタイブレーカー
+    df_sorted = df.sort_values(['AIスコア', 'Odds']).reset_index()
     
     df['評価'] = ""
     df['期待値'] = 0.0
     df['判定'] = "見送り"
     max_exp, honmei_exp = 0.0, 0.0
+    
+    # 🌟 修正2：全員が同点＝データがブロックされて取れていないと判断し、安全装置を発動
+    is_no_data = (len(df_sorted) > 1 and df_sorted['AIスコア'].nunique() == 1)
     
     if len(df_sorted) > 0:
         sum_inv = (1.0 / df_sorted['AIスコア']).replace([float('inf')], 0).sum()
@@ -108,16 +109,21 @@ def run_ai_core(df, track_cond):
             elif i == 2: df.at[idx, '評価'] = '▲'
             elif i < 6: df.at[idx, '評価'] = '△'
             
-            score = row['AIスコア']
-            if sum_inv > 0 and score > 0:
-                win_prob = (1.0 / score) / sum_inv
-                exp_val = win_prob * row['Odds']
-                if track_cond in ["重", "不良"]: exp_val *= 0.95
-                
-                df.at[idx, '期待値'] = round(exp_val, 2)
-                if exp_val > max_exp: max_exp = round(exp_val, 2)
-                if i == 0: honmei_exp = round(exp_val, 2)
-                if exp_val >= 1.0: df.at[idx, '判定'] = '買い'
+            # データがない時は期待値を0にして強制見送り
+            if is_no_data:
+                df.at[idx, '期待値'] = 0.0
+                df.at[idx, '判定'] = '見送り'
+            else:
+                score = row['AIスコア']
+                if sum_inv > 0 and score > 0:
+                    win_prob = (1.0 / score) / sum_inv
+                    exp_val = win_prob * row['Odds']
+                    if track_cond in ["重", "不良"]: exp_val *= 0.95
+                    
+                    df.at[idx, '期待値'] = round(exp_val, 2)
+                    if exp_val > max_exp: max_exp = round(exp_val, 2)
+                    if i == 0: honmei_exp = round(exp_val, 2)
+                    if exp_val >= 1.0: df.at[idx, '判定'] = '買い'
                     
     if honmei_exp >= 1.5: race_rank = "⭐⭐⭐ S (激アツ)"
     elif honmei_exp >= 1.2: race_rank = "⭐⭐ A (勝負)"
@@ -456,7 +462,7 @@ if menu == "ダッシュボード":
                 st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
                 st.markdown("#### 📋 馬番データ詳細一覧")
                 if has_valid_data:
-                    display_cols = [c for c in ['馬番', '馬名', '単勝オッズ', '実力順位(RL)', '適正順位(CL)', '評価', '期待値', '判定', 'レース結果', '単勝払戻金'] if c in df_calc.columns]
+                    display_cols = [c for c in ['馬番', '馬名', '単勝オッズ', '実力順位(RL)', '適正順位(CL)', 'AIスコア', '評価', '期待値', '判定', '着順', '単勝払戻金'] if c in df_calc.columns]
                     st.dataframe(df_calc[display_cols], use_container_width=True, hide_index=True, height=700)
     else:
         st.info("まだ解析されたレースがありません。左のメニューから実行してください。")
@@ -555,7 +561,6 @@ elif menu == "レース予測・自動実行":
                                 overall_progress.progress((i + 1) / len(race_ids))
                                 time.sleep(random.uniform(2.0, 4.0))
                                 
-                            # 🌟 履歴をスプレッドシートに保存（画面更新対策）
                             save_history_to_sheet(analysis_sheet, st.session_state.race_history)
                             status.update(label="🎉 選択した全レースの解析が完了しました！ダッシュボードをご確認ください。", state="complete", expanded=False)
                             time.sleep(2)
@@ -569,7 +574,6 @@ elif menu == "レース予測・自動実行":
                         st.error(f"詳細: {str(e)}")
 
     with tab2:
-        # 🌟 UIを「ID直打ち」から「ドロップダウン選択」に大幅変更
         st.write("指定した日付・競馬場・レース番号から解析します。")
         col_s1, col_s2, col_s3 = st.columns(3)
         with col_s1:
@@ -593,7 +597,6 @@ elif menu == "レース予測・自動実行":
                 try:
                     driver = get_driver()
                     
-                    # ユーザーが選んだ条件からレースIDを自動捜索
                     found_id = None
                     urls = [
                         f"https://{domain_top}/top/race_list.html?kaisai_date={date_str_single}",
@@ -623,7 +626,6 @@ elif menu == "レース予測・自動実行":
                         
                         fetch_and_analyze_single_race(found_id, driver, analysis_sheet, progress_bar, log_text, is_batch=False)
                         
-                        # 🌟 履歴をスプレッドシートに保存（画面更新対策）
                         save_history_to_sheet(analysis_sheet, st.session_state.race_history)
                         
                         status.update(label="🎉 解析完了！ダッシュボードをご確認ください。", state="complete", expanded=False)
@@ -638,14 +640,14 @@ elif menu == "レース予測・自動実行":
                         except: pass
         
         st.markdown("---")
-        st.subheader("【レース後】収支記録")
-        if st.button("💰 確定結果＆払戻金を自動取得"):
+        st.subheader("【レース後】収支記録＆データ蓄積")
+        st.write("結果を取得すると、ダッシュボードに反映されると同時に「過去データ蓄積」シートに自動で保存されます。")
+        if st.button("💰 確定結果取得＆データベースへ保存"):
             with st.status("レース情報を特定中...", expanded=True) as status:
                 driver = None
                 try:
                     driver = get_driver()
                     
-                    # ユーザーが選んだ条件からレースIDを自動捜索
                     found_id = None
                     urls = [
                         f"https://{domain_top}/top/race_list.html?kaisai_date={date_str_single}",
@@ -679,6 +681,10 @@ elif menu == "レース予測・自動実行":
                             time.sleep(2)
                             soup = BeautifulSoup(driver.page_source, 'html.parser')
 
+                        title_elem = soup.find(class_='RaceName')
+                        race_title = title_elem.text.strip() if title_elem else f"レースID:{found_id}"
+                        race_title = re.sub(r'\s+', ' ', race_title)
+
                         result_map = {}
                         for tr in soup.find_all('tr'):
                             rank_elem, umaban_elem = tr.find(class_=re.compile(r'Rank', re.I)), tr.find(class_=re.compile(r'Umaban', re.I))
@@ -694,8 +700,9 @@ elif menu == "レース予測・自動実行":
                                 break
                                     
                         ss = gc.open(ss_name)
+                        
                         analysis_sheet = ss.worksheet("分析シート")
-                        existing_horses = analysis_sheet.get('A2:B25')
+                        existing_horses = analysis_sheet.get('A2:E25')
                         q_data, r_data = [], []
                         for row in existing_horses:
                             if len(row) < 1 or not str(row[0]).strip(): continue
@@ -706,11 +713,45 @@ elif menu == "レース予測・自動実行":
                             r_data.append([horse_payout])
                             
                         end_row = 1 + len(q_data)
-                        analysis_sheet.update(range_name=f"Q2:Q{end_row}", values=q_data, value_input_option='USER_ENTERED')
-                        analysis_sheet.update(range_name=f"R2:R{end_row}", values=r_data, value_input_option='USER_ENTERED')
+                        analysis_sheet.update(range_name=f"J2:J{end_row}", values=q_data, value_input_option='USER_ENTERED')
+                        analysis_sheet.update(range_name=f"K2:K{end_row}", values=r_data, value_input_option='USER_ENTERED')
                         
-                        status.update(label="💰 記録完了！", state="complete", expanded=False)
-                        time.sleep(1.5)
+                        if found_id in st.session_state.race_history:
+                            db_sheet = ss.worksheet("過去データ蓄積")
+                            target_race = st.session_state.race_history[found_id]
+                            df_calc, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = run_ai_core(target_race['df_raw'], "良")
+                            
+                            append_rows = []
+                            for idx, row in df_calc.iterrows():
+                                if pd.isna(row['馬番']) or row['馬番'] == "": continue
+                                u_num = str(row['馬番'])
+                                h_rank = result_map.get(u_num, "")
+                                h_pay = tansho_payout if h_rank == "1" else "0"
+                                
+                                append_rows.append([
+                                    date_str_single,
+                                    place_single,
+                                    race_title,
+                                    u_num,
+                                    row.get('馬名', ''),
+                                    row.get('単勝オッズ', ''),
+                                    row.get('実力順位(RL)', ''),
+                                    row.get('適正順位(CL)', ''),
+                                    row.get('AIスコア', ''),
+                                    row.get('評価', ''),
+                                    row.get('期待値', ''),
+                                    row.get('判定', ''),
+                                    h_rank,
+                                    h_pay
+                                ])
+                            
+                            if append_rows:
+                                db_sheet.append_rows(append_rows, value_input_option='USER_ENTERED')
+                                status.update(label="💰 記録完了！データベースへの保存も成功しました。", state="complete", expanded=False)
+                        else:
+                            status.update(label="💰 記録完了！（※画面に解析データがないため、データベース保存はスキップしました）", state="complete", expanded=False)
+                            
+                        time.sleep(2)
                         st.rerun()
                 except Exception as e:
                     status.update(label="エラーが発生しました", state="error")
