@@ -152,9 +152,7 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     
     horse_links = {}
     horse_list = []
-    odds_map = {} # 🌟 NEW: オッズの格納庫を先頭に準備
     
-    # 【対策1】まずは「出馬表ページ」から直接オッズの取得を試みる
     for tr in soup.find_all('tr', class_=re.compile(r'HorseList', re.I)):
         td_umaban = tr.find(class_=re.compile(r'Umaban', re.I))
         td_horse = tr.find(class_=re.compile(r'HorseInfo', re.I))
@@ -168,13 +166,6 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
                 if name and u_num and [u_num, name] not in horse_list:
                     horse_list.append([u_num, name])
                     horse_links[name] = href
-                
-                # 出馬表の行の中にある「小数点の数字」をオッズと判定して拾い上げる
-                for td in tr.find_all(['td', 'span']):
-                    text = td.text.strip()
-                    if re.match(r'^[0-9]+\.[0-9]+$', text):
-                        odds_map[u_num] = text
-                        break
     
     if not horse_list: 
         if domain == "race.netkeiba.com": raise Exception("馬番が未発表です（週末のレースは木・金曜に確定します）")
@@ -182,28 +173,29 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     
     horse_list = sorted(horse_list, key=lambda x: int(x[0]))
     
-    # 【対策2】出馬表でオッズが取れていなければ、「オッズ専用ページ」へ取りに行く
-    if len(odds_map) < len(horse_list) / 2:
-        log_text.write("📊 最新オッズを取得中...")
-        driver.get(f"https://{domain}/odds/index.html?type=b1&race_id={race_id}")
-        time.sleep(1)
-        odds_soup = BeautifulSoup(driver.page_source, 'html.parser')
-        
-        for tr in odds_soup.find_all('tr'):
-            umaban_td = tr.find(class_=re.compile(r'Umaban', re.I))
-            if umaban_td:
-                u_match = re.search(r'\d+', umaban_td.text)
-                if u_match:
-                    u_num = str(int(u_match.group(0)))
-                    # 🌟 核心の修正: クラス名(Odds)に頼らず、ハイフンなしの小数点をオッズとして認識
-                    for elem in tr.find_all(['td', 'span', 'div']):
-                        text = elem.text.strip()
-                        if '-' not in text and re.match(r'^[0-9]+\.[0-9]+$', text):
-                            odds_map[u_num] = text
+    log_text.write("📊 最新オッズを取得中...")
+    driver.get(f"https://{domain}/odds/index.html?type=b1&race_id={race_id}")
+    time.sleep(1)
+    odds_soup = BeautifulSoup(driver.page_source, 'html.parser')
+    odds_map = {}
+    
+    # 🌟 修正: 確実に「オッズ（Oddsクラス）」のみを取得し、斤量を誤認するバグを撲滅
+    for tr in odds_soup.find_all('tr'):
+        umaban_td = tr.find(class_=re.compile(r'Umaban', re.I))
+        if umaban_td:
+            u_match = re.search(r'\d+', umaban_td.text)
+            if u_match:
+                u_num = str(int(u_match.group(0)))
+                odds_tds = tr.find_all(class_=re.compile(r'Odds', re.I))
+                for td in odds_tds:
+                    text = td.text.strip()
+                    if '-' not in text:
+                        o_match = re.search(r'([0-9.]+)', text)
+                        if o_match: 
+                            odds_map[u_num] = o_match.group(1)
                             break
                             
-    # 【対策3】それでもダメなら「結果ページ」（レース終了後用）から確定オッズを取る
-    if len(odds_map) < len(horse_list) / 2:
+    if not odds_map:
         driver.get(f"https://{domain}/race/result.html?race_id={race_id}")
         time.sleep(1)
         res_soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -393,7 +385,8 @@ if menu == "ダッシュボード":
                 st.markdown("#### 📋 馬番データ詳細一覧")
                 if has_valid_data:
                     display_cols = [c for c in ['馬番', '馬名', '単勝オッズ', '実力順位(RL)', '適正順位(CL)', '評価', '期待値', '判定', 'レース結果', '単勝払戻金'] if c in df_calc.columns]
-                    st.dataframe(df_calc[display_cols], use_container_width=True, hide_index=True)
+                    # 🌟 修正: 高さを十分に確保(700px)し、スクロールなしで全18頭がスッポリ見えるようにしました！
+                    st.dataframe(df_calc[display_cols], use_container_width=True, hide_index=True, height=700)
     else:
         st.info("まだ解析されたレースがありません。左のメニューから実行してください。")
 
