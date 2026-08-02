@@ -98,7 +98,6 @@ def get_driver():
     options.add_argument('--disable-gpu')
     options.add_argument('--window-size=1920,1080')
     
-    # 🌟 NEW: 画像や不要な拡張機能を読み込まず、CPUリソースを大幅に節約
     options.add_argument('--blink-settings=imagesEnabled=false')
     options.add_argument('--disable-extensions')
     options.page_load_strategy = 'eager'
@@ -153,6 +152,9 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     
     horse_links = {}
     horse_list = []
+    odds_map = {} # 🌟 NEW: オッズの格納庫を先頭に準備
+    
+    # 【対策1】まずは「出馬表ページ」から直接オッズの取得を試みる
     for tr in soup.find_all('tr', class_=re.compile(r'HorseList', re.I)):
         td_umaban = tr.find(class_=re.compile(r'Umaban', re.I))
         td_horse = tr.find(class_=re.compile(r'HorseInfo', re.I))
@@ -166,6 +168,13 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
                 if name and u_num and [u_num, name] not in horse_list:
                     horse_list.append([u_num, name])
                     horse_links[name] = href
+                
+                # 出馬表の行の中にある「小数点の数字」をオッズと判定して拾い上げる
+                for td in tr.find_all(['td', 'span']):
+                    text = td.text.strip()
+                    if re.match(r'^[0-9]+\.[0-9]+$', text):
+                        odds_map[u_num] = text
+                        break
     
     if not horse_list: 
         if domain == "race.netkeiba.com": raise Exception("馬番が未発表です（週末のレースは木・金曜に確定します）")
@@ -173,25 +182,28 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     
     horse_list = sorted(horse_list, key=lambda x: int(x[0]))
     
-    log_text.write("📊 最新オッズを取得中...")
-    driver.get(f"https://{domain}/odds/index.html?type=b1&race_id={race_id}")
-    time.sleep(1)
-    odds_soup = BeautifulSoup(driver.page_source, 'html.parser')
-    odds_map = {}
-    for tr in odds_soup.find_all('tr'):
-        umaban_td = tr.find(class_=re.compile(r'Umaban', re.I))
-        if umaban_td:
-            u_match = re.search(r'\d+', umaban_td.text)
-            if u_match:
-                u_num = str(int(u_match.group(0)))
-                odds_tds = tr.find_all(class_=re.compile(r'Odds', re.I))
-                for td in odds_tds:
-                    text = td.text.strip()
-                    if '-' not in text:
-                        o_match = re.search(r'([0-9.]+)', text)
-                        if o_match: odds_map[u_num] = o_match.group(1); break
+    # 【対策2】出馬表でオッズが取れていなければ、「オッズ専用ページ」へ取りに行く
+    if len(odds_map) < len(horse_list) / 2:
+        log_text.write("📊 最新オッズを取得中...")
+        driver.get(f"https://{domain}/odds/index.html?type=b1&race_id={race_id}")
+        time.sleep(1)
+        odds_soup = BeautifulSoup(driver.page_source, 'html.parser')
+        
+        for tr in odds_soup.find_all('tr'):
+            umaban_td = tr.find(class_=re.compile(r'Umaban', re.I))
+            if umaban_td:
+                u_match = re.search(r'\d+', umaban_td.text)
+                if u_match:
+                    u_num = str(int(u_match.group(0)))
+                    # 🌟 核心の修正: クラス名(Odds)に頼らず、ハイフンなしの小数点をオッズとして認識
+                    for elem in tr.find_all(['td', 'span', 'div']):
+                        text = elem.text.strip()
+                        if '-' not in text and re.match(r'^[0-9]+\.[0-9]+$', text):
+                            odds_map[u_num] = text
+                            break
                             
-    if not odds_map:
+    # 【対策3】それでもダメなら「結果ページ」（レース終了後用）から確定オッズを取る
+    if len(odds_map) < len(horse_list) / 2:
         driver.get(f"https://{domain}/race/result.html?race_id={race_id}")
         time.sleep(1)
         res_soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -303,7 +315,6 @@ st.markdown("""
     .main-header { font-size: 1.8rem; font-weight: 700; margin-bottom: 0; }
     .sub-header { color: #94A3B8; font-size: 0.9rem; margin-bottom: 20px; }
     .ticket-card { background-color: #1E293B; border-left: 4px solid #10B981; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
-    /* Expander(アコーディオン)を見やすくカスタマイズ */
     .streamlit-expanderHeader { font-size: 1.1rem; font-weight: 600; background-color: #1E293B; border-radius: 8px; }
 </style>
 """, unsafe_allow_html=True)
@@ -340,7 +351,6 @@ if menu == "ダッシュボード":
     track_cond = st.radio("実際の馬場状態を選択すると、荒れ具合を加味して期待値が変動します", ["良", "稍重", "重", "不良"], horizontal=True)
     st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
 
-    # 🌟 NEW: テーブルを廃止し、クリックでその場に詳細が開く「アコーディオンUI」に変更！
     st.markdown("### 🏆 本日の勝負レース一覧 (クリックで詳細を展開)")
     if st.session_state.race_history:
         for r_id, r_data in st.session_state.race_history.items():
@@ -349,10 +359,8 @@ if menu == "ダッシュボード":
             honmei_str = f"{honmei[0]}番" if honmei else "なし"
             icon = "🎯" if r_data['ai_decision'] == '買い' else "💤"
             
-            # アコーディオンの見出し（一覧）部分
             expander_title = f"{icon} {r_data['race_name']} ｜ 判定: {r_data['ai_decision']} ｜ {race_rank} ｜ ◎本命: {honmei_str} ｜ 期待値: {honmei_exp:.2f}"
             
-            # アコーディオンの中身（詳細）部分
             with st.expander(expander_title, expanded=False):
                 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
                 with kpi1: st.markdown(f'<div class="kpi-card"><div class="kpi-title">AI判定 (買い指定)</div><div class="kpi-value">{buy_count}<span style="font-size:1.2rem; color:#94A3B8;">頭</span></div></div>', unsafe_allow_html=True)
@@ -475,7 +483,6 @@ elif menu == "レース予測・自動実行":
                             st.write(f"▶ {i+1}/{len(race_ids)}: レースID {r_id} を解析開始")
                             try:
                                 fetch_and_analyze_single_race(r_id, driver, analysis_sheet, sub_progress, log_text, is_batch=True)
-                                # 🌟 CPU制限（Throttled）を回避するための休憩時間（3秒）
                                 time.sleep(3)
                             except Exception as e:
                                 st.write(f"⚠️ {r_id}はスキップ: {str(e)}")
