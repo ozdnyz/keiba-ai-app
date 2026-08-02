@@ -88,7 +88,7 @@ def run_ai_core(df, track_cond):
     return df, True, honmei, taikou, tana, himo, buy_count, ai_invest, ai_return, ai_profit, ai_roi, profit_color, sign, race_rank, max_exp, honmei_exp
 
 # ==========================================
-# 🛠️ ブラウザ起動モジュール
+# 🛠️ ブラウザ起動モジュール (CPU負荷軽減版)
 # ==========================================
 def get_driver():
     options = Options()
@@ -97,6 +97,11 @@ def get_driver():
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
     options.add_argument('--window-size=1920,1080')
+    
+    # 🌟 NEW: 画像や不要な拡張機能を読み込まず、CPUリソースを大幅に節約
+    options.add_argument('--blink-settings=imagesEnabled=false')
+    options.add_argument('--disable-extensions')
+    options.page_load_strategy = 'eager'
     
     try:
         from selenium.webdriver.chrome.service import Service
@@ -222,7 +227,7 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
         if umamei_clean in horse_links:
             db_url = horse_links[umamei_clean]
             driver.get("https:" + db_url if not db_url.startswith('http') else db_url)
-            time.sleep(1.2)
+            time.sleep(1.0)
             db_soup = BeautifulSoup(driver.page_source, 'html.parser')
             result_table = db_soup.find('table', class_='db_h_race_results')
             if result_table:
@@ -298,6 +303,8 @@ st.markdown("""
     .main-header { font-size: 1.8rem; font-weight: 700; margin-bottom: 0; }
     .sub-header { color: #94A3B8; font-size: 0.9rem; margin-bottom: 20px; }
     .ticket-card { background-color: #1E293B; border-left: 4px solid #10B981; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
+    /* Expander(アコーディオン)を見やすくカスタマイズ */
+    .streamlit-expanderHeader { font-size: 1.1rem; font-weight: 600; background-color: #1E293B; border-radius: 8px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -333,71 +340,54 @@ if menu == "ダッシュボード":
     track_cond = st.radio("実際の馬場状態を選択すると、荒れ具合を加味して期待値が変動します", ["良", "稍重", "重", "不良"], horizontal=True)
     st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
 
-    st.markdown("### 🏆 本日の勝負レース一覧 (AI選別)")
+    # 🌟 NEW: テーブルを廃止し、クリックでその場に詳細が開く「アコーディオンUI」に変更！
+    st.markdown("### 🏆 本日の勝負レース一覧 (クリックで詳細を展開)")
     if st.session_state.race_history:
-        history_rows = []
         for r_id, r_data in st.session_state.race_history.items():
-            history_rows.append({
-                'レースID': r_id,
-                '開催レース名': r_data['race_name'],
-                'レース勝負度': r_data['race_rank'],
-                '◎本命馬': f"{r_data['honmei'][0]}番" if r_data['honmei'] else "なし",
-                '本命期待値': r_data['honmei_exp'],
-                'AI判定': r_data['ai_decision']
-            })
-        history_df = pd.DataFrame(history_rows)
-        st.dataframe(history_df[['開催レース名', 'レース勝負度', '◎本命馬', '本命期待値', 'AI判定']], use_container_width=True, hide_index=True)
-        
-        st.markdown("---")
-        st.markdown("### 🔍 解析レースの詳細表示切り替え")
-        race_options = {r_id: r_data['race_name'] for r_id, r_data in st.session_state.race_history.items()}
-        selected_id = st.radio("詳細を見たいレースを選んでください", options=list(race_options.keys()), format_func=lambda x: race_options[x], horizontal=True)
-        
-        target_race = st.session_state.race_history[selected_id]
-        df_calc, has_valid_data, honmei, taikou, tana, himo, buy_count, ai_invest, ai_return, ai_profit, ai_roi, profit_color, sign, race_rank, max_exp, honmei_exp = run_ai_core(target_race['df_raw'], track_cond)
+            df_calc, has_valid_data, honmei, taikou, tana, himo, buy_count, ai_invest, ai_return, ai_profit, ai_roi, profit_color, sign, race_rank, max_exp, honmei_exp = run_ai_core(r_data['df_raw'], track_cond)
+            
+            honmei_str = f"{honmei[0]}番" if honmei else "なし"
+            icon = "🎯" if r_data['ai_decision'] == '買い' else "💤"
+            
+            # アコーディオンの見出し（一覧）部分
+            expander_title = f"{icon} {r_data['race_name']} ｜ 判定: {r_data['ai_decision']} ｜ {race_rank} ｜ ◎本命: {honmei_str} ｜ 期待値: {honmei_exp:.2f}"
+            
+            # アコーディオンの中身（詳細）部分
+            with st.expander(expander_title, expanded=False):
+                kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+                with kpi1: st.markdown(f'<div class="kpi-card"><div class="kpi-title">AI判定 (買い指定)</div><div class="kpi-value">{buy_count}<span style="font-size:1.2rem; color:#94A3B8;">頭</span></div></div>', unsafe_allow_html=True)
+                with kpi2: st.markdown(f'<div class="kpi-card"><div class="kpi-title">現在の馬場設定</div><div class="kpi-value" style="color:#F59E0B;">{track_cond}</div></div>', unsafe_allow_html=True)
+                with kpi3: st.markdown(f'<div class="kpi-card"><div class="kpi-title">AI投資額</div><div class="kpi-value">{int(ai_invest):,}<span style="font-size:1.2rem; color:#94A3B8;">円</span></div></div>', unsafe_allow_html=True)
+                with kpi4: st.markdown(f'<div class="kpi-card"><div class="kpi-title">AIシミュレーション利益</div><div class="kpi-value" style="color:{profit_color};">{sign}{ai_profit:,}<span style="font-size:1.2rem; color:#94A3B8;">円</span></div></div>', unsafe_allow_html=True)
+
+                st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
+                st.markdown("#### 🎯 推奨買い目カード")
+                if not has_valid_data:
+                    st.warning("⚠️ 予測データがありません。")
+                elif not honmei:
+                    st.info("ℹ️ 現在のデータでは「◎(本命)」が存在しないため、買い目を生成できません。")
+                else:
+                    h_str = honmei[0]
+                    t_str = taikou[0] if taikou else ""
+                    tn_str = tana[0] if tana else ""
+                    相手_all = [t for t in [t_str, tn_str] + himo if t]
+                    相手_str = " - ".join(相手_all)
+                    
+                    col_t1, col_t2, col_t3 = st.columns(3)
+                    with col_t1:
+                        st.markdown(f"""<div class="ticket-card"><div style="color:#94A3B8; font-size:0.9rem; margin-bottom:5px;">おすすめ券種① (軸)</div><div style="font-size:1.3rem; font-weight:bold;">単勝 / 複勝</div><div style="color:#10B981; font-size:1.5rem; font-weight:bold; margin-top:10px;">{h_str}</div></div>""", unsafe_allow_html=True)
+                    with col_t2:
+                        st.markdown(f"""<div class="ticket-card"><div style="color:#94A3B8; font-size:0.9rem; margin-bottom:5px;">おすすめ券種② (基本)</div><div style="font-size:1.3rem; font-weight:bold;">馬連 / ワイド流し</div><div style="color:#3B82F6; font-size:1.5rem; font-weight:bold; margin-top:10px;">{h_str} <span style="color:#94A3B8; font-size:1.2rem;">→</span> {相手_str}</div></div>""", unsafe_allow_html=True)
+                    with col_t3:
+                        st.markdown(f"""<div class="ticket-card"><div style="color:#94A3B8; font-size:0.9rem; margin-bottom:5px;">おすすめ券種③ (三連系)</div><div style="font-size:1.3rem; font-weight:bold;">3連複フォーメーション</div><div style="color:#EF4444; font-size:1.2rem; font-weight:bold; margin-top:10px;">1段目: {h_str}<br>2段目: {t_str} - {tn_str}<br>3段目: {相手_str}</div></div>""", unsafe_allow_html=True)
+
+                st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
+                st.markdown("#### 📋 馬番データ詳細一覧")
+                if has_valid_data:
+                    display_cols = [c for c in ['馬番', '馬名', '単勝オッズ', '実力順位(RL)', '適正順位(CL)', '評価', '期待値', '判定', 'レース結果', '単勝払戻金'] if c in df_calc.columns]
+                    st.dataframe(df_calc[display_cols], use_container_width=True, hide_index=True)
     else:
         st.info("まだ解析されたレースがありません。左のメニューから実行してください。")
-        buy_count, track_cond, ai_invest, ai_profit, profit_color, sign, has_valid_data = 0, "良", 0, 0, "#F8FAFC", "", False
-
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-    with kpi1: st.markdown(f'<div class="kpi-card"><div class="kpi-title">AI判定 (買い指定)</div><div class="kpi-value">{buy_count}<span style="font-size:1.2rem; color:#94A3B8;">頭</span></div></div>', unsafe_allow_html=True)
-    with kpi2: st.markdown(f'<div class="kpi-card"><div class="kpi-title">現在の馬場設定</div><div class="kpi-value" style="color:#F59E0B;">{track_cond}</div></div>', unsafe_allow_html=True)
-    with kpi3: st.markdown(f'<div class="kpi-card"><div class="kpi-title">AI投資額</div><div class="kpi-value">{int(ai_invest):,}<span style="font-size:1.2rem; color:#94A3B8;">円</span></div></div>', unsafe_allow_html=True)
-    with kpi4: st.markdown(f'<div class="kpi-card"><div class="kpi-title">AIシミュレーション利益</div><div class="kpi-value" style="color:{profit_color};">{sign}{ai_profit:,}<span style="font-size:1.2rem; color:#94A3B8;">円</span></div></div>', unsafe_allow_html=True)
-
-    st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
-    st.markdown("### 🎯 推奨買い目カード")
-    
-    if not has_valid_data:
-        st.warning("⚠️ 予測データがありません。")
-    elif not honmei:
-        st.info("ℹ️ 現在のデータでは「◎(本命)」が存在しないため、買い目を生成できません。")
-    else:
-        h_str = honmei[0]
-        t_str = taikou[0] if taikou else ""
-        tn_str = tana[0] if tana else ""
-        相手_all = [t for t in [t_str, tn_str] + himo if t]
-        相手_str = " - ".join(相手_all)
-        
-        col_t1, col_t2, col_t3 = st.columns(3)
-        with col_t1:
-            st.markdown(f"""<div class="ticket-card"><div style="color:#94A3B8; font-size:0.9rem; margin-bottom:5px;">おすすめ券種① (軸)</div>
-                <div style="font-size:1.3rem; font-weight:bold;">単勝 / 複勝</div>
-                <div style="color:#10B981; font-size:1.5rem; font-weight:bold; margin-top:10px;">{h_str}</div></div>""", unsafe_allow_html=True)
-        with col_t2:
-            st.markdown(f"""<div class="ticket-card"><div style="color:#94A3B8; font-size:0.9rem; margin-bottom:5px;">おすすめ券種② (基本)</div>
-                <div style="font-size:1.3rem; font-weight:bold;">馬連 / ワイド流し</div>
-                <div style="color:#3B82F6; font-size:1.5rem; font-weight:bold; margin-top:10px;">{h_str} <span style="color:#94A3B8; font-size:1.2rem;">→</span> {相手_str}</div></div>""", unsafe_allow_html=True)
-        with col_t3:
-            st.markdown(f"""<div class="ticket-card"><div style="color:#94A3B8; font-size:0.9rem; margin-bottom:5px;">おすすめ券種③ (三連系)</div>
-                <div style="font-size:1.3rem; font-weight:bold;">3連複フォーメーション</div>
-                <div style="color:#EF4444; font-size:1.2rem; font-weight:bold; margin-top:10px;">1段目: {h_str}<br>2段目: {t_str} - {tn_str}<br>3段目: {相手_str}</div></div>""", unsafe_allow_html=True)
-
-    st.markdown("---")
-    st.markdown("### 📋 馬番データ詳細一覧")
-    if has_valid_data:
-        display_cols = [c for c in ['馬番', '馬名', '単勝オッズ', '実力順位(RL)', '適正順位(CL)', '評価', '期待値', '判定', 'レース結果', '単勝払戻金'] if c in df_calc.columns]
-        st.dataframe(df_calc[display_cols], use_container_width=True, hide_index=True)
 
 # ==========================================
 # 🔍 メイン画面：レース予測・自動実行
@@ -449,7 +439,6 @@ elif menu == "レース予測・自動実行":
                         race_ids = []
                         urls_to_scan = []
                         
-                        # 🌟 最強の修正点：出馬表と結果一覧の両方をスキャンし、夜の取りこぼしを完全防止！
                         if scan_jra: 
                             urls_to_scan.append(f"https://race.netkeiba.com/top/race_list.html?kaisai_date={date_str}")
                             urls_to_scan.append(f"https://race.netkeiba.com/top/result_list.html?kaisai_date={date_str}")
@@ -465,7 +454,6 @@ elif menu == "レース予測・自動実行":
                                 match = re.search(r'race_id=(\d{12})', a['href'])
                                 if match:
                                     r_id = match.group(1)
-                                    # 選択された会場コードと一致するものだけをリストに追加
                                     if r_id[4:6] in valid_place_codes:
                                         if r_id not in race_ids: race_ids.append(r_id)
                         
@@ -487,6 +475,8 @@ elif menu == "レース予測・自動実行":
                             st.write(f"▶ {i+1}/{len(race_ids)}: レースID {r_id} を解析開始")
                             try:
                                 fetch_and_analyze_single_race(r_id, driver, analysis_sheet, sub_progress, log_text, is_batch=True)
+                                # 🌟 CPU制限（Throttled）を回避するための休憩時間（3秒）
+                                time.sleep(3)
                             except Exception as e:
                                 st.write(f"⚠️ {r_id}はスキップ: {str(e)}")
                             overall_progress.progress((i + 1) / len(race_ids))
