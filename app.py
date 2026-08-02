@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 import re
 import time
 import random
+import requests  # 🌟 NEW: 超軽量の直接通信モジュールを追加！
 import gspread
 import pandas as pd
 import altair as alt
@@ -89,7 +90,7 @@ def run_ai_core(df, track_cond):
     return df, True, honmei, taikou, tana, himo, buy_count, ai_invest, ai_return, ai_profit, ai_roi, profit_color, sign, race_rank, max_exp, honmei_exp
 
 # ==========================================
-# 🛠️ ブラウザ起動モジュール (メモリ節約＆偽装対応)
+# 🛠️ ブラウザ起動モジュール
 # ==========================================
 def get_driver():
     options = Options()
@@ -231,38 +232,48 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
         avg_rank, rentai_rate = 99.0, 0.0
         if umamei_clean in horse_links:
             db_url = horse_links[umamei_clean]
-            driver.get("https:" + db_url if not db_url.startswith('http') else db_url)
-            time.sleep(random.uniform(0.5, 1.0))
-            db_soup = BeautifulSoup(driver.page_source, 'html.parser')
-            result_table = db_soup.find('table', class_='db_h_race_results')
-            if result_table:
-                headers_th = result_table.find_all('th')
-                rank_idx, dist_idx = -1, -1
-                for idx, th in enumerate(headers_th):
-                    if '着順' in th.text: rank_idx = idx
-                    if '距離' in th.text: dist_idx = idx
-                if rank_idx != -1:
-                    rows = result_table.find('tbody').find_all('tr') if result_table.find('tbody') else result_table.find_all('tr')[1:]
-                    ranks = []
-                    for tr in rows:
-                        cols = tr.find_all('td')
-                        if len(cols) > rank_idx:
-                            match = re.search(r'(\d+)', cols[rank_idx].text.strip())
-                            if match:
-                                ranks.append(int(match.group(1)))
-                                if len(ranks) >= 3: break
-                    if ranks: avg_rank = sum(ranks) / len(ranks)
-                    if dist_idx != -1 and track_type and distance:
-                        t_runs, t_rentai = 0, 0
+            full_db_url = "https:" + db_url if not db_url.startswith('http') else db_url
+            
+            try:
+                # 🌟 劇的改善ポイント: Seleniumを使わず、直接HTMLを抜き取ることでメモリ消費をゼロに！
+                req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}
+                res = requests.get(full_db_url, headers=req_headers, timeout=5)
+                db_soup = BeautifulSoup(res.content, 'html.parser')
+                
+                result_table = db_soup.find('table', class_='db_h_race_results')
+                if result_table:
+                    headers_th = result_table.find_all('th')
+                    rank_idx, dist_idx = -1, -1
+                    for idx, th in enumerate(headers_th):
+                        if '着順' in th.text: rank_idx = idx
+                        if '距離' in th.text: dist_idx = idx
+                    if rank_idx != -1:
+                        rows = result_table.find('tbody').find_all('tr') if result_table.find('tbody') else result_table.find_all('tr')[1:]
+                        ranks = []
                         for tr in rows:
                             cols = tr.find_all('td')
-                            if len(cols) > max(rank_idx, dist_idx):
-                                d_txt, r_txt = cols[dist_idx].text.strip(), cols[rank_idx].text.strip()
-                                if track_type in d_txt and distance in d_txt:
-                                    t_runs += 1
-                                    r_m = re.search(r'(\d+)', r_txt)
-                                    if r_m and int(r_m.group(1)) in [1, 2]: t_rentai += 1
-                        if t_runs > 0: rentai_rate = round(t_rentai / t_runs, 3)
+                            if len(cols) > rank_idx:
+                                match = re.search(r'(\d+)', cols[rank_idx].text.strip())
+                                if match:
+                                    ranks.append(int(match.group(1)))
+                                    if len(ranks) >= 3: break
+                        if ranks: avg_rank = sum(ranks) / len(ranks)
+                        if dist_idx != -1 and track_type and distance:
+                            t_runs, t_rentai = 0, 0
+                            for tr in rows:
+                                cols = tr.find_all('td')
+                                if len(cols) > max(rank_idx, dist_idx):
+                                    d_txt, r_txt = cols[dist_idx].text.strip(), cols[rank_idx].text.strip()
+                                    if track_type in d_txt and distance in d_txt:
+                                        t_runs += 1
+                                        r_m = re.search(r'(\d+)', r_txt)
+                                        if r_m and int(r_m.group(1)) in [1, 2]: t_rentai += 1
+                            if t_runs > 0: rentai_rate = round(t_rentai / t_runs, 3)
+            except Exception:
+                pass
+            
+            # 直接通信のため待機時間はごくわずかでOK（爆速化）
+            time.sleep(0.2)
         
         raw_scores.append({'馬番': u_num, '馬名': umamei, '単勝オッズ': odds_map.get(u_num, "0.0"), 'avg_rank': avg_rank, 'rentai_rate': rentai_rate})
         
@@ -436,7 +447,6 @@ elif menu == "レース予測・自動実行":
             else:
                 with st.status(f"🌐 {target_date.strftime('%Y/%m/%d')}の全レースリストを取得中...", expanded=True) as status:
                     try:
-                        # 🌟 修正1：URL取得用の一時ブラウザ（用が済んだらすぐ消す）
                         init_driver = None
                         try:
                             init_driver = get_driver()
@@ -479,7 +489,6 @@ elif menu == "レース予測・自動実行":
                         log_text = st.empty()
                         sub_progress = st.progress(0)
                         
-                        # 🌟 修正2：1レースごとにブラウザを「新品」に交換し、メモリクラッシュを100%防ぐ
                         for i, r_id in enumerate(race_ids):
                             st.write(f"▶ {i+1}/{len(race_ids)}: レースID {r_id} を解析開始")
                             race_driver = None
@@ -489,7 +498,6 @@ elif menu == "レース予測・自動実行":
                             except Exception as e:
                                 st.write(f"⚠️ {r_id}はスキップ: {str(e)}")
                             finally:
-                                # 使い終わったブラウザは絶対に消去する（ゾンビ化防止）
                                 if race_driver:
                                     try: race_driver.quit()
                                     except: pass
