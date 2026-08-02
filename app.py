@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 import re
 import time
 import random
-import requests  # 🌟 NEW: 超軽量の直接通信モジュールを追加！
+import requests
 import gspread
 import pandas as pd
 import altair as alt
@@ -178,28 +178,36 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     
     log_text.write("📊 最新オッズを取得中...")
     driver.get(f"https://{domain}/odds/index.html?type=b1&race_id={race_id}")
-    time.sleep(1)
-    odds_soup = BeautifulSoup(driver.page_source, 'html.parser')
-    odds_map = {}
     
-    for tr in odds_soup.find_all('tr'):
-        umaban_td = tr.find(class_=re.compile(r'Umaban', re.I))
-        if umaban_td:
-            u_match = re.search(r'\d+', umaban_td.text)
-            if u_match:
-                u_num = str(int(u_match.group(0)))
-                odds_tds = tr.find_all(class_=re.compile(r'Odds', re.I))
-                for td in odds_tds:
-                    text = td.text.strip()
-                    if '-' not in text:
-                        o_match = re.search(r'([0-9.]+)', text)
-                        if o_match: 
-                            odds_map[u_num] = o_match.group(1)
-                            break
+    odds_map = {}
+    # 🌟 究極の修正：オッズが遅れて表示されるのを「待つ」ためのリトライループ
+    for _ in range(3):
+        time.sleep(1.5) # 1.5秒ずつ、最大3回（4.5秒）確認しにいく
+        odds_soup = BeautifulSoup(driver.page_source, 'html.parser')
+        
+        for tr in odds_soup.find_all('tr'):
+            umaban_td = tr.find(class_=re.compile(r'Umaban', re.I))
+            if umaban_td:
+                u_match = re.search(r'\d+', umaban_td.text)
+                if u_match:
+                    u_num = str(int(u_match.group(0)))
+                    odds_tds = tr.find_all(class_=re.compile(r'Odds', re.I))
+                    for td in odds_tds:
+                        text = td.text.strip()
+                        if '-' not in text:
+                            o_match = re.search(r'([0-9.]+)', text)
+                            if o_match: 
+                                odds_map[u_num] = o_match.group(1)
+                                break
+                                
+        # 出走馬の半分以上のオッズが取れていれば「表示完了」とみなして次へ進む
+        if len(odds_map) >= len(horse_list) / 2:
+            break
                             
+    # それでもダメ（レース終了済などでオッズページが消えている）なら、結果ページから確定オッズを取る
     if not odds_map:
         driver.get(f"https://{domain}/race/result.html?race_id={race_id}")
-        time.sleep(1)
+        time.sleep(1.5)
         res_soup = BeautifulSoup(driver.page_source, 'html.parser')
         result_table = res_soup.find('table', class_='RaceTable01')
         if result_table:
@@ -235,7 +243,7 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
             full_db_url = "https:" + db_url if not db_url.startswith('http') else db_url
             
             try:
-                # 🌟 劇的改善ポイント: Seleniumを使わず、直接HTMLを抜き取ることでメモリ消費をゼロに！
+                # ダイレクト通信（requests）で爆速・軽量化
                 req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}
                 res = requests.get(full_db_url, headers=req_headers, timeout=5)
                 db_soup = BeautifulSoup(res.content, 'html.parser')
@@ -272,7 +280,6 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
             except Exception:
                 pass
             
-            # 直接通信のため待機時間はごくわずかでOK（爆速化）
             time.sleep(0.2)
         
         raw_scores.append({'馬番': u_num, '馬名': umamei, '単勝オッズ': odds_map.get(u_num, "0.0"), 'avg_rank': avg_rank, 'rentai_rate': rentai_rate})
