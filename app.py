@@ -4,6 +4,7 @@ from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import re
 import time
+import random
 import gspread
 import pandas as pd
 import altair as alt
@@ -88,7 +89,7 @@ def run_ai_core(df, track_cond):
     return df, True, honmei, taikou, tana, himo, buy_count, ai_invest, ai_return, ai_profit, ai_roi, profit_color, sign, race_rank, max_exp, honmei_exp
 
 # ==========================================
-# 🛠️ ブラウザ起動モジュール (CPU負荷軽減版)
+# 🛠️ ブラウザ起動モジュール (ステルス偽装対応版)
 # ==========================================
 def get_driver():
     options = Options()
@@ -97,6 +98,10 @@ def get_driver():
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
     options.add_argument('--window-size=1920,1080')
+    
+    # 🌟 NEW: ネット競馬のボット検知（アクセス遮断）を回避する最強の身分偽装設定
+    options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36')
+    options.add_argument('--disable-blink-features=AutomationControlled')
     
     options.add_argument('--blink-settings=imagesEnabled=false')
     options.add_argument('--disable-extensions')
@@ -179,7 +184,6 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     odds_soup = BeautifulSoup(driver.page_source, 'html.parser')
     odds_map = {}
     
-    # 🌟 修正: 確実に「オッズ（Oddsクラス）」のみを取得し、斤量を誤認するバグを撲滅
     for tr in odds_soup.find_all('tr'):
         umaban_td = tr.find(class_=re.compile(r'Umaban', re.I))
         if umaban_td:
@@ -231,7 +235,8 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
         if umamei_clean in horse_links:
             db_url = horse_links[umamei_clean]
             driver.get("https:" + db_url if not db_url.startswith('http') else db_url)
-            time.sleep(1.0)
+            # 🌟 NEW: 連続アクセスを人間らしくバラけさせてボット検知を回避
+            time.sleep(random.uniform(0.8, 1.4))
             db_soup = BeautifulSoup(driver.page_source, 'html.parser')
             result_table = db_soup.find('table', class_='db_h_race_results')
             if result_table:
@@ -385,7 +390,6 @@ if menu == "ダッシュボード":
                 st.markdown("#### 📋 馬番データ詳細一覧")
                 if has_valid_data:
                     display_cols = [c for c in ['馬番', '馬名', '単勝オッズ', '実力順位(RL)', '適正順位(CL)', '評価', '期待値', '判定', 'レース結果', '単勝払戻金'] if c in df_calc.columns]
-                    # 🌟 修正: 高さを十分に確保(700px)し、スクロールなしで全18頭がスッポリ見えるようにしました！
                     st.dataframe(df_calc[display_cols], use_container_width=True, hide_index=True, height=700)
     else:
         st.info("まだ解析されたレースがありません。左のメニューから実行してください。")
@@ -476,7 +480,8 @@ elif menu == "レース予測・自動実行":
                             st.write(f"▶ {i+1}/{len(race_ids)}: レースID {r_id} を解析開始")
                             try:
                                 fetch_and_analyze_single_race(r_id, driver, analysis_sheet, sub_progress, log_text, is_batch=True)
-                                time.sleep(3)
+                                # 🌟 NEW: レース間の待機時間もランダム化して検知を完全に逃れる
+                                time.sleep(random.uniform(3.0, 5.0))
                             except Exception as e:
                                 st.write(f"⚠️ {r_id}はスキップ: {str(e)}")
                             overall_progress.progress((i + 1) / len(race_ids))
