@@ -89,7 +89,6 @@ def run_ai_core(df, track_cond):
     
     df['AIスコア'] = (df['RL'] * 0.7) + (df['CL'] * 0.3)
     
-    # 🌟 修正1：同点の場合はオッズが低い（人気）順にするタイブレーカー
     df_sorted = df.sort_values(['AIスコア', 'Odds']).reset_index()
     
     df['評価'] = ""
@@ -97,7 +96,6 @@ def run_ai_core(df, track_cond):
     df['判定'] = "見送り"
     max_exp, honmei_exp = 0.0, 0.0
     
-    # 🌟 修正2：全員が同点＝データがブロックされて取れていないと判断し、安全装置を発動
     is_no_data = (len(df_sorted) > 1 and df_sorted['AIスコア'].nunique() == 1)
     
     if len(df_sorted) > 0:
@@ -109,7 +107,6 @@ def run_ai_core(df, track_cond):
             elif i == 2: df.at[idx, '評価'] = '▲'
             elif i < 6: df.at[idx, '評価'] = '△'
             
-            # データがない時は期待値を0にして強制見送り
             if is_no_data:
                 df.at[idx, '期待値'] = 0.0
                 df.at[idx, '判定'] = '見送り'
@@ -254,9 +251,10 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     if len(odds_map) < len(horse_list) / 2:
         log_text.write("📊 レース結果から確定オッズを取得中...")
         try:
-            req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-            res = requests.get(f"https://{domain}/race/result.html?race_id={race_id}", headers=req_headers, timeout=5)
-            res_soup = BeautifulSoup(res.content, 'html.parser')
+            # 🌟修正箇所：オッズ取得もブラウザ（Selenium）を使用するように変更
+            driver.get(f"https://{domain}/race/result.html?race_id={race_id}")
+            time.sleep(1.0)
+            res_soup = BeautifulSoup(driver.page_source, 'html.parser')
             result_table = res_soup.find('table', class_=re.compile(r'RaceTable', re.I))
             if result_table:
                 headers_th = result_table.find_all('th')
@@ -293,9 +291,10 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
             full_db_url = "https:" + db_url if not db_url.startswith('http') else db_url
             
             try:
-                req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}
-                res = requests.get(full_db_url, headers=req_headers, timeout=5)
-                db_soup = BeautifulSoup(res.content, 'html.parser')
+                # 🌟修正箇所：ここが一番重要です！過去成績をrequestsではなくブラウザ（Selenium）で取得しBot対策を完全回避
+                time.sleep(random.uniform(0.5, 1.2))
+                driver.get(full_db_url)
+                db_soup = BeautifulSoup(driver.page_source, 'html.parser')
                 
                 result_table = db_soup.find('table', class_='db_h_race_results')
                 if result_table:
