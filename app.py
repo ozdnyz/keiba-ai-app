@@ -251,7 +251,6 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     if len(odds_map) < len(horse_list) / 2:
         log_text.write("📊 レース結果から確定オッズを取得中...")
         try:
-            # 🌟修正箇所：オッズ取得もブラウザ（Selenium）を使用するように変更
             driver.get(f"https://{domain}/race/result.html?race_id={race_id}")
             time.sleep(1.0)
             res_soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -288,13 +287,32 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
         avg_rank, rentai_rate = 99.0, 0.0
         if umamei_clean in horse_links:
             db_url = horse_links[umamei_clean]
-            full_db_url = "https:" + db_url if not db_url.startswith('http') else db_url
+            
+            # 🌟 修正1：URLの形がおかしい場合も正確に補正する
+            if db_url.startswith('http'):
+                full_db_url = db_url
+            elif db_url.startswith('//'):
+                full_db_url = "https:" + db_url
+            else:
+                full_db_url = "https://db.netkeiba.com" + db_url
             
             try:
-                # 🌟修正箇所：ここが一番重要です！過去成績をrequestsではなくブラウザ（Selenium）で取得しBot対策を完全回避
-                time.sleep(random.uniform(0.5, 1.2))
-                driver.get(full_db_url)
-                db_soup = BeautifulSoup(driver.page_source, 'html.parser')
+                time.sleep(random.uniform(0.3, 0.7))
+                
+                # 🌟 修正2：Seleniumだと弾かれるため requests に戻し、最強の文字化け自動翻訳を追加
+                req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+                res = requests.get(full_db_url, headers=req_headers, timeout=5)
+                
+                db_html = ""
+                try:
+                    db_html = res.content.decode('utf-8')
+                except UnicodeDecodeError:
+                    try:
+                        db_html = res.content.decode('euc-jp')
+                    except UnicodeDecodeError:
+                        db_html = res.content.decode('shift_jis', errors='ignore')
+                        
+                db_soup = BeautifulSoup(db_html, 'html.parser')
                 
                 result_table = db_soup.find('table', class_='db_h_race_results')
                 if result_table:
