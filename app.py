@@ -20,17 +20,6 @@ gc = gspread.service_account_from_dict(creds_dict)
 ss_name = "競馬AIシステム_Core"
 
 # ==========================================
-# 🌐 グローバル通信セッション (Cookie維持・偽装)
-# ==========================================
-session = requests.Session()
-session.headers.update({
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    'Referer': 'https://race.netkeiba.com/',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-    'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8'
-})
-
-# ==========================================
 # 💾 データ永続化＆過去データ蓄積モジュール
 # ==========================================
 def save_history_to_sheet(sheet, history_dict):
@@ -158,7 +147,7 @@ def run_ai_core(df, track_cond):
     return df, True, honmei, taikou, tana, himo, buy_count, ai_invest, ai_return, ai_profit, ai_roi, profit_color, sign, race_rank, max_exp, honmei_exp
 
 # ==========================================
-# 🛠️ ブラウザ起動モジュール (最強ステルス化)
+# 🛠️ ブラウザ起動モジュール
 # ==========================================
 def get_driver():
     options = Options()
@@ -169,25 +158,18 @@ def get_driver():
     options.add_argument('--window-size=1920,1080')
     options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36')
     options.add_argument('--disable-blink-features=AutomationControlled')
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
     options.add_argument('--blink-settings=imagesEnabled=false')
+    options.add_argument('--disable-extensions')
     
     try:
         from selenium.webdriver.chrome.service import Service
         service = Service('/usr/bin/chromedriver')
         options.binary_location = '/usr/bin/chromium'
-        driver = webdriver.Chrome(service=service, options=options)
+        return webdriver.Chrome(service=service, options=options)
     except Exception:
         import chromedriver_autoinstaller
         chromedriver_autoinstaller.install()
-        driver = webdriver.Chrome(options=options)
-        
-    # 🌟 究極対策：CloudflareにBotとバレないようにシステム変数を偽装
-    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-        "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-    })
-    return driver
+        return webdriver.Chrome(options=options)
 
 # ==========================================
 # 🛠️ 1レース解析用の共通モジュール
@@ -269,9 +251,9 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     if len(odds_map) < len(horse_list) / 2:
         log_text.write("📊 レース結果から確定オッズを取得中...")
         try:
-            driver.get(f"https://{domain}/race/result.html?race_id={race_id}")
-            time.sleep(1.0)
-            res_soup = BeautifulSoup(driver.page_source, 'html.parser')
+            req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+            res = requests.get(f"https://{domain}/race/result.html?race_id={race_id}", headers=req_headers, timeout=5)
+            res_soup = BeautifulSoup(res.content, 'html.parser')
             result_table = res_soup.find('table', class_=re.compile(r'RaceTable', re.I))
             if result_table:
                 headers_th = result_table.find_all('th')
@@ -305,43 +287,20 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
         avg_rank, rentai_rate = 99.0, 0.0
         if umamei_clean in horse_links:
             db_url = horse_links[umamei_clean]
-            
-            if db_url.startswith('http'): full_db_url = db_url
-            elif db_url.startswith('//'): full_db_url = "https:" + db_url
-            else: full_db_url = "https://db.netkeiba.com" + db_url
+            full_db_url = "https:" + db_url if not db_url.startswith('http') else db_url
             
             try:
-                time.sleep(random.uniform(0.5, 1.2))
-                db_html = ""
+                req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}
+                res = requests.get(full_db_url, headers=req_headers, timeout=5)
+                db_soup = BeautifulSoup(res.content, 'html.parser')
                 
-                # 🌟 究極対策1：まずはrequestsで通信し、EUC-JPを強制指定して文字化けを完全排除！
-                try:
-                    res = session.get(full_db_url, timeout=8)
-                    if res.status_code == 200:
-                        res.encoding = 'EUC-JP'
-                        db_html = res.text
-                except Exception:
-                    pass
-                
-                # 🌟 究極対策2：弾かれた場合は最強ステルス設定のブラウザで突破し、Cloudflareの認証を3.5秒待つ
-                if not db_html or 'db_h_race_results' not in db_html:
-                    try:
-                        driver.get(full_db_url)
-                        time.sleep(3.5)
-                        db_html = driver.page_source
-                    except Exception:
-                        pass
-                    
-                db_soup = BeautifulSoup(db_html, 'html.parser')
                 result_table = db_soup.find('table', class_='db_h_race_results')
-                
                 if result_table:
                     headers_th = result_table.find_all('th')
                     rank_idx, dist_idx = -1, -1
                     for idx, th in enumerate(headers_th):
                         if '着順' in th.text: rank_idx = idx
                         if '距離' in th.text: dist_idx = idx
-                        
                     if rank_idx != -1:
                         rows = result_table.find('tbody').find_all('tr') if result_table.find('tbody') else result_table.find_all('tr')[1:]
                         ranks = []
@@ -353,23 +312,17 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
                                     ranks.append(int(match.group(1)))
                                     if len(ranks) >= 3: break
                         if ranks: avg_rank = sum(ranks) / len(ranks)
-                        
                         if dist_idx != -1 and track_type and distance:
                             t_runs, t_rentai = 0, 0
                             for tr in rows:
                                 cols = tr.find_all('td')
                                 if len(cols) > max(rank_idx, dist_idx):
-                                    d_txt = cols[dist_idx].text.strip()
-                                    r_txt = cols[rank_idx].text.strip()
+                                    d_txt, r_txt = cols[dist_idx].text.strip(), cols[rank_idx].text.strip()
                                     if track_type in d_txt and distance in d_txt:
                                         t_runs += 1
                                         r_m = re.search(r'(\d+)', r_txt)
                                         if r_m and int(r_m.group(1)) in [1, 2]: t_rentai += 1
                             if t_runs > 0: rentai_rate = round(t_rentai / t_runs, 3)
-                else:
-                    # 🌟 究極対策3：万が一完全にブロックされた場合は画面上に警告を出して原因を明確にする
-                    log_text.write(f"⚠️ {u_num}番 {umamei} の過去成績が取得できませんでした (通信ブロック等)")
-                    time.sleep(0.5)
             except Exception:
                 pass
             
