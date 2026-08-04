@@ -184,6 +184,11 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     driver.get(f"https://{domain}/race/shutuba.html?race_id={race_id}")
     time.sleep(2.0)
     soup = BeautifulSoup(driver.page_source, 'html.parser')
+    
+    if not soup.find('tr', class_=re.compile(r'HorseList', re.I)):
+        driver.get(f"https://{domain}/race/shutuba.html?race_id={race_id}")
+        time.sleep(2.0)
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
 
     place_code = race_id[4:6] if len(race_id) >= 12 else ""
     place_map = {"01":"札幌", "02":"函館", "03":"福島", "04":"新潟", "05":"東京", "06":"中山", "07":"中京", "08":"京都", "09":"阪神", "10":"小倉"}
@@ -289,7 +294,6 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
         
         avg_rank, rentai_rate = 99.0, 0.0
         if umamei_clean in horse_links:
-            # 🌟 ここが、お客様がご自身で書かれていた【純度100%】の元のURL生成と取得ロジックです。
             db_url = horse_links[umamei_clean]
             full_db_url = "https:" + db_url if not db_url.startswith('http') else db_url
             
