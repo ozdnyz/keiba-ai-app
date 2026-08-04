@@ -290,6 +290,7 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
             full_db_url = "https:" + db_url if not db_url.startswith('http') else db_url
             
             try:
+                # ここがお客様のオリジナルコードのまま（requests使用）の過去成績取得部分です
                 req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}
                 res = requests.get(full_db_url, headers=req_headers, timeout=5)
                 db_soup = BeautifulSoup(res.content, 'html.parser')
