@@ -503,19 +503,27 @@ elif menu == "レース予測・自動実行":
                         time.sleep(2)
                         soup = BeautifulSoup(driver.page_source, 'html.parser')
 
-                        # 🌟 App側でもColabと同じ全データスクレイピングを実行
                         def clean_text(text):
                             return re.sub(r'\s+', '', text.strip()) if text else ""
                             
                         title_elem = soup.find(class_='RaceName')
                         race_title = re.sub(r'\s+', ' ', title_elem.text.strip()) if title_elem else f"レースID:{found_id}"
 
-                        track_type, distance, weather, track_cond = "", "", "", ""
+                        track_type, distance, direction, weather, track_cond = "", "", "", "", ""
                         race_data_elem = soup.find(class_='RaceData01')
                         if race_data_elem:
                             rd_text = race_data_elem.text.replace('\xa0', ' ')
                             m_type = re.search(r'(芝|ダ|障).*?(\d+)m', rd_text)
-                            if m_type: track_type, distance = m_type.group(1), m_type.group(2)
+                            if m_type: 
+                                track_type, distance = m_type.group(1), m_type.group(2)
+                                # 🌟 回りの自動判定を追加
+                                if place_single == "新潟" and distance == "1000":
+                                    direction = "直"
+                                elif place_single in ["東京", "中京", "新潟"]:
+                                    direction = "左"
+                                else:
+                                    direction = "右"
+                                    
                             m_weather = re.search(r'天候\s*:\s*([^\s/]+)', rd_text)
                             if m_weather: weather = clean_text(m_weather.group(1))
                             m_cond = re.search(r'(芝|ダ|障|馬場)\s*:\s*([^\s/]+)', rd_text)
@@ -589,7 +597,6 @@ elif menu == "レース予測・自動実行":
                         analysis_sheet.update(range_name=f"J2:J{end_row}", values=q_data, value_input_option='USER_ENTERED')
                         analysis_sheet.update(range_name=f"K2:K{end_row}", values=r_data, value_input_option='USER_ENTERED')
                         
-                        # 🌟 SessionStateに残っている「予測時」のデータと「レース後」のデータを合体
                         if found_id in st.session_state.race_history:
                             db_sheet = ss.worksheet("過去データ蓄積")
                             target_race = st.session_state.race_history[found_id]
@@ -603,14 +610,13 @@ elif menu == "レース予測・自動実行":
                                 h_rank = r_info.get('着順', "")
                                 h_pay = tansho_payout if h_rank == "1" else "0"
                                 
-                                # Session Stateから父・母父を取り出し
                                 chichi = row.get('父', '')
                                 hahachichi = row.get('母父', '')
                                 
-                                # Colabと全く同じ全30項目に流し込む
+                                # 🌟 変更点：「回り」を挿入して全31項目に合わせる
                                 append_rows.append([
                                     date_str_single, place_single, race_title, 
-                                    track_type, distance, weather, track_cond,
+                                    track_type, distance, direction, weather, track_cond,
                                     r_info.get('枠番', ''), u_num, row.get('馬名', ''), r_info.get('性齢', ''), 
                                     r_info.get('騎手', ''), r_info.get('斤量', ''), r_info.get('馬体重', ''), r_info.get('調教師', ''), 
                                     chichi, hahachichi, row.get('単勝オッズ', ''), r_info.get('人気', ''), 
