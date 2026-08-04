@@ -5,7 +5,6 @@ from bs4 import BeautifulSoup
 import re
 import time
 import random
-import requests
 import json
 import gspread
 import pandas as pd
@@ -288,7 +287,6 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
         if umamei_clean in horse_links:
             db_url = horse_links[umamei_clean]
             
-            # 🌟 修正1：URLの形がおかしい場合も正確に補正する
             if db_url.startswith('http'):
                 full_db_url = db_url
             elif db_url.startswith('//'):
@@ -297,22 +295,10 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
                 full_db_url = "https://db.netkeiba.com" + db_url
             
             try:
-                time.sleep(random.uniform(0.3, 0.7))
-                
-                # 🌟 修正2：Seleniumだと弾かれるため requests に戻し、最強の文字化け自動翻訳を追加
-                req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-                res = requests.get(full_db_url, headers=req_headers, timeout=5)
-                
-                db_html = ""
-                try:
-                    db_html = res.content.decode('utf-8')
-                except UnicodeDecodeError:
-                    try:
-                        db_html = res.content.decode('euc-jp')
-                    except UnicodeDecodeError:
-                        db_html = res.content.decode('shift_jis', errors='ignore')
-                        
-                db_soup = BeautifulSoup(db_html, 'html.parser')
+                # 🌟 真の解決策：過去成績も「完全にブラウザ(Selenium)経由」でアクセスし、Botブロックをすり抜ける！
+                time.sleep(random.uniform(0.6, 1.5))
+                driver.get(full_db_url)
+                db_soup = BeautifulSoup(driver.page_source, 'html.parser')
                 
                 result_table = db_soup.find('table', class_='db_h_race_results')
                 if result_table:
