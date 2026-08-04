@@ -147,7 +147,7 @@ def run_ai_core(df, track_cond):
     return df, True, honmei, taikou, tana, himo, buy_count, ai_invest, ai_return, ai_profit, ai_roi, profit_color, sign, race_rank, max_exp, honmei_exp
 
 # ==========================================
-# 🛠️ ブラウザ起動モジュール
+# 🛠️ ブラウザ起動モジュール (最強ステルス化)
 # ==========================================
 def get_driver():
     options = Options()
@@ -158,6 +158,8 @@ def get_driver():
     options.add_argument('--window-size=1920,1080')
     options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36')
     options.add_argument('--disable-blink-features=AutomationControlled')
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
     options.add_argument('--blink-settings=imagesEnabled=false')
     options.add_argument('--disable-extensions')
     
@@ -170,6 +172,16 @@ def get_driver():
         import chromedriver_autoinstaller
         chromedriver_autoinstaller.install()
         return webdriver.Chrome(options=options)
+
+# ==========================================
+# 🛠️ グローバルセッションの準備
+# ==========================================
+session = requests.Session()
+session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Referer': 'https://race.netkeiba.com/',
+    'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8'
+})
 
 # ==========================================
 # 🛠️ 1レース解析用の共通モジュール
@@ -296,54 +308,49 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
                 time.sleep(random.uniform(0.3, 0.8))
                 db_html = ""
                 
-                # 🌟 【究極対策】パターン1：まずは爆速＆高精度な requests でアクセス（EUC-JP完全対応）
+                # 🌟 究極対策1：Cookieを維持したセッションでアクセス
                 try:
-                    req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-                    res = requests.get(full_db_url, headers=req_headers, timeout=5)
+                    res = session.get(full_db_url, timeout=5)
                     if res.status_code == 200:
                         try: db_html = res.content.decode('euc-jp')
                         except: db_html = res.content.decode('utf-8', errors='ignore')
                 except:
                     pass
                 
-                # 🌟 【究極対策】パターン2：requestsがCloudflareに弾かれた場合は、ブラウザ(Selenium)に自動切り替え
+                # 🌟 究極対策2：弾かれた場合は最強ステルス設定のブラウザで突破
                 if not db_html or 'db_h_race_results' not in db_html:
                     driver.get(full_db_url)
+                    time.sleep(1.0)
                     db_html = driver.page_source
                     
                 db_soup = BeautifulSoup(db_html, 'html.parser')
                 result_table = db_soup.find('table', class_='db_h_race_results')
                 
                 if result_table:
-                    headers_th = result_table.find_all('th')
-                    rank_idx, dist_idx = -1, -1
-                    for idx, th in enumerate(headers_th):
-                        if '着順' in th.text: rank_idx = idx
-                        if '距離' in th.text: dist_idx = idx
-                    if rank_idx != -1:
-                        rows = result_table.find('tbody').find_all('tr') if result_table.find('tbody') else result_table.find_all('tr')[1:]
-                        ranks = []
+                    rows = result_table.find('tbody').find_all('tr') if result_table.find('tbody') else result_table.find_all('tr')[1:]
+                    ranks = []
+                    for tr in rows:
+                        cols = tr.find_all('td')
+                        # 🌟 究極対策3：列のズレを防ぐため、Colabで大成功した「完全固定インデックス（11=着順, 14=距離）」を採用
+                        if len(cols) > 14:
+                            match = re.search(r'(\d+)', cols[11].text.strip())
+                            if match:
+                                ranks.append(int(match.group(1)))
+                                if len(ranks) >= 3: break
+                    if ranks: avg_rank = sum(ranks) / len(ranks)
+                    
+                    if track_type and distance:
+                        t_runs, t_rentai = 0, 0
                         for tr in rows:
                             cols = tr.find_all('td')
-                            if len(cols) > rank_idx:
-                                match = re.search(r'(\d+)', cols[rank_idx].text.strip())
-                                if match:
-                                    ranks.append(int(match.group(1)))
-                                    if len(ranks) >= 3: break
-                        if ranks: avg_rank = sum(ranks) / len(ranks)
-                        
-                        if dist_idx != -1 and track_type and distance:
-                            t_runs, t_rentai = 0, 0
-                            for tr in rows:
-                                cols = tr.find_all('td')
-                                if len(cols) > max(rank_idx, dist_idx):
-                                    d_txt = cols[dist_idx].text.strip()
-                                    r_txt = cols[rank_idx].text.strip()
-                                    if track_type in d_txt and distance in d_txt:
-                                        t_runs += 1
-                                        r_m = re.search(r'(\d+)', r_txt)
-                                        if r_m and int(r_m.group(1)) in [1, 2]: t_rentai += 1
-                            if t_runs > 0: rentai_rate = round(t_rentai / t_runs, 3)
+                            if len(cols) > 14:
+                                d_txt = cols[14].text.strip()
+                                r_txt = cols[11].text.strip()
+                                if track_type in d_txt and distance in d_txt:
+                                    t_runs += 1
+                                    r_m = re.search(r'(\d+)', r_txt)
+                                    if r_m and int(r_m.group(1)) in [1, 2]: t_rentai += 1
+                        if t_runs > 0: rentai_rate = round(t_rentai / t_runs, 3)
             except Exception:
                 pass
             
