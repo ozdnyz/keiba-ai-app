@@ -1,184 +1,11 @@
-import streamlit as st
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from bs4 import BeautifulSoup
-import re
-import time
-import random
-import requests
-import json
-import gspread
-import pandas as pd
-import altair as alt
-from datetime import datetime
-
-# ==========================================
-# 🔐 Googleスプレッドシート認証
-# ==========================================
-creds_dict = st.secrets["gcp_service_account"]
-gc = gspread.service_account_from_dict(creds_dict)
-ss_name = "競馬AIシステム_Core"
-
-# ==========================================
-# 💾 データ永続化＆過去データ蓄積モジュール
-# ==========================================
-def save_history_to_sheet(sheet, history_dict):
-    try:
-        sheet.batch_clear(["AA1:AA100"])
-        cells = []
-        for r_id, data in history_dict.items():
-            save_data = {
-                r_id: {
-                    'race_name': data['race_name'],
-                    'race_rank': data['race_rank'],
-                    'honmei': data['honmei'],
-                    'honmei_exp': data['honmei_exp'],
-                    'ai_decision': data['ai_decision'],
-                    'df_raw': data['df_raw'].to_dict(orient='records')
-                }
-            }
-            cells.append([json.dumps(save_data, ensure_ascii=False)])
-        if cells:
-            sheet.update(range_name=f'AA1:AA{len(cells)}', values=cells, value_input_option='USER_ENTERED')
-    except Exception:
-        pass
-
-def load_history_from_sheet(sheet):
-    history = {}
-    try:
-        vals = sheet.get('AA1:AA100')
-        for row in vals:
-            if len(row) > 0 and row[0]:
-                save_data = json.loads(row[0])
-                for r_id, data in save_data.items():
-                    history[r_id] = {
-                        'race_name': data['race_name'],
-                        'race_rank': data['race_rank'],
-                        'honmei': data['honmei'],
-                        'honmei_exp': data['honmei_exp'],
-                        'ai_decision': data['ai_decision'],
-                        'df_raw': pd.DataFrame(data['df_raw'])
-                    }
-    except Exception:
-        pass
-    return history
-
-if 'race_history' not in st.session_state:
-    st.session_state.race_history = {}
-    try:
-        ss = gc.open(ss_name)
-        sheet = ss.worksheet("分析シート")
-        st.session_state.race_history = load_history_from_sheet(sheet)
-    except Exception:
-        pass
-
-# ==========================================
-# 🧠 独自AIエンジン (1番固定バグ修正版)
-# ==========================================
-def run_ai_core(df, track_cond):
-    if df.empty or '実力順位(RL)' not in df.columns or '適正順位(CL)' not in df.columns:
-        return df, False, [], [], [], [], 0, 0, 0, 0, 0.0, "#F8FAFC", "", "エラー", 0.0, 0.0
-    
-    df = df[df['馬番'] != ""].copy()
-    if df['実力順位(RL)'].replace('', pd.NA).isna().all():
-        return df, False, [], [], [], [], 0, 0, 0, 0, 0.0, "#F8FAFC", "", "データ待機", 0.0
-
-    df['Odds'] = pd.to_numeric(df['単勝オッズ'], errors='coerce').fillna(0)
-    df['RL'] = pd.to_numeric(df['実力順位(RL)'], errors='coerce').fillna(99)
-    df['CL'] = pd.to_numeric(df['適正順位(CL)'], errors='coerce').fillna(99)
-    
-    df['AIスコア'] = (df['RL'] * 0.7) + (df['CL'] * 0.3)
-    
-    # 🌟 修正1：同点の場合はオッズが低い（人気）順にするタイブレーカー
-    df_sorted = df.sort_values(['AIスコア', 'Odds']).reset_index()
-    
-    df['評価'] = ""
-    df['期待値'] = 0.0
-    df['判定'] = "見送り"
-    max_exp, honmei_exp = 0.0, 0.0
-    
-    # 🌟 修正2：全員が同点＝データがブロックされて取れていないと判断し、安全装置を発動
-    is_no_data = (len(df_sorted) > 1 and df_sorted['AIスコア'].nunique() == 1)
-    
-    if len(df_sorted) > 0:
-        sum_inv = (1.0 / df_sorted['AIスコア']).replace([float('inf')], 0).sum()
-        for i, row in df_sorted.iterrows():
-            idx = row['index']
-            if i == 0: df.at[idx, '評価'] = '◎'
-            elif i == 1: df.at[idx, '評価'] = '◯'
-            elif i == 2: df.at[idx, '評価'] = '▲'
-            elif i < 6: df.at[idx, '評価'] = '△'
-            
-            # データがない時は期待値を0にして強制見送り
-            if is_no_data:
-                df.at[idx, '期待値'] = 0.0
-                df.at[idx, '判定'] = '見送り'
-            else:
-                score = row['AIスコア']
-                if sum_inv > 0 and score > 0:
-                    win_prob = (1.0 / score) / sum_inv
-                    exp_val = win_prob * row['Odds']
-                    if track_cond in ["重", "不良"]: exp_val *= 0.95
-                    
-                    df.at[idx, '期待値'] = round(exp_val, 2)
-                    if exp_val > max_exp: max_exp = round(exp_val, 2)
-                    if i == 0: honmei_exp = round(exp_val, 2)
-                    if exp_val >= 1.0: df.at[idx, '判定'] = '買い'
-                    
-    if honmei_exp >= 1.5: race_rank = "⭐⭐⭐ S (激アツ)"
-    elif honmei_exp >= 1.2: race_rank = "⭐⭐ A (勝負)"
-    elif honmei_exp >= 1.0: race_rank = "⭐ B (買い)"
-    else: race_rank = "見送り"
-                    
-    honmei = df[df['評価'] == '◎']['馬番'].tolist()
-    taikou = df[df['評価'] == '◯']['馬番'].tolist()
-    tana = df[df['評価'] == '▲']['馬番'].tolist()
-    himo = df[df['評価'] == '△']['馬番'].tolist()
-    buy_count = len(df[df['判定'] == '買い'])
-    
-    for col in ['AI投資額', 'AI払戻金']:
-        if col not in df.columns: df[col] = 0
-    df['AI投資額'] = pd.to_numeric(df['AI投資額'], errors='coerce').fillna(0)
-    df['AI払戻金'] = pd.to_numeric(df['AI払戻金'], errors='coerce').fillna(0)
-    ai_invest = df['AI投資額'].sum()
-    ai_return = df['AI払戻金'].sum()
-    ai_profit = int(ai_return - ai_invest)
-    ai_roi = round((ai_return / ai_invest * 100), 1) if ai_invest > 0 else 0.0
-    profit_color = "#10B981" if ai_profit > 0 else ("#EF4444" if ai_profit < 0 else "#F8FAFC")
-    sign = "+" if ai_profit > 0 else ""
-    
-    return df, True, honmei, taikou, tana, himo, buy_count, ai_invest, ai_return, ai_profit, ai_roi, profit_color, sign, race_rank, max_exp, honmei_exp
-
-# ==========================================
-# 🛠️ ブラウザ起動モジュール
-# ==========================================
-def get_driver():
-    options = Options()
-    options.add_argument('--headless=new')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-gpu')
-    options.add_argument('--window-size=1920,1080')
-    options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36')
-    options.add_argument('--disable-blink-features=AutomationControlled')
-    options.add_argument('--blink-settings=imagesEnabled=false')
-    options.add_argument('--disable-extensions')
-    
-    try:
-        from selenium.webdriver.chrome.service import Service
-        service = Service('/usr/bin/chromedriver')
-        options.binary_location = '/usr/bin/chromium'
-        return webdriver.Chrome(service=service, options=options)
-    except Exception:
-        import chromedriver_autoinstaller
-        chromedriver_autoinstaller.install()
-        return webdriver.Chrome(options=options)
-
 # ==========================================
 # 🛠️ 1レース解析用の共通モジュール
 # ==========================================
 def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar, log_text, is_batch=False):
     domain = "race.netkeiba.com"
+
+    def clean_text(text):
+        return re.sub(r'\s+', '', text.strip()) if text else ""
 
     log_text.write(f"🔍 出馬表と開催会場を解析中...")
     driver.get(f"https://{domain}/race/shutuba.html?race_id={race_id}")
@@ -220,7 +47,7 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
             a_tag = td_horse.find('a', href=re.compile(r'horse/'))
             if u_match and a_tag:
                 u_num = str(int(u_match.group(0)))
-                name = a_tag.text.strip().replace(" ", "").replace(" ", "")
+                name = clean_text(a_tag.text)
                 href = a_tag.get('href')
                 if name and u_num and [u_num, name] not in horse_list:
                     horse_list.append([u_num, name])
@@ -285,7 +112,7 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     
     for row in horse_list:
         u_num, umamei = row[0], row[1]
-        umamei_clean = umamei.replace(" ", "").replace(" ", "")
+        umamei_clean = clean_text(umamei)
         current_idx += 1
         
         prefix = f"[{race_name}] " if is_batch else ""
@@ -293,6 +120,8 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
         progress_bar.progress(current_idx / total_horses)
         
         avg_rank, rentai_rate = 99.0, 0.0
+        chichi, hahachichi = "", ""
+        
         if umamei_clean in horse_links:
             db_url = horse_links[umamei_clean]
             full_db_url = "https:" + db_url if not db_url.startswith('http') else db_url
@@ -302,6 +131,21 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
                 res = requests.get(full_db_url, headers=req_headers, timeout=5)
                 db_soup = BeautifulSoup(res.content, 'html.parser')
                 
+                # 🌟 App側にも「強固な血統表ロジック」を適用
+                blood_table = db_soup.find('table', class_='blood_table')
+                if blood_table:
+                    rows_b = blood_table.find_all('tr')
+                    if len(rows_b) > 0:
+                        sire_a = rows_b[0].find('a')
+                        if sire_a: chichi = clean_text(sire_a.text)
+                        
+                        mid_idx = len(rows_b) // 2
+                        if mid_idx < len(rows_b):
+                            mid_tds = rows_b[mid_idx].find_all('td')
+                            if len(mid_tds) >= 2:
+                                bms_a = mid_tds[1].find('a')
+                                if bms_a: hahachichi = clean_text(bms_a.text)
+
                 result_table = db_soup.find('table', class_='db_h_race_results')
                 if result_table:
                     headers_th = result_table.find_all('th')
@@ -336,18 +180,22 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
             
             time.sleep(0.2)
         
-        raw_scores.append({'馬番': u_num, '馬名': umamei, '単勝オッズ': odds_map.get(u_num, "0.0"), 'avg_rank': avg_rank, 'rentai_rate': rentai_rate})
+        # 🌟 Appのデータフレームにも父と母父の情報を追加して保持
+        raw_scores.append({
+            '馬番': u_num, '馬名': umamei, '単勝オッズ': odds_map.get(u_num, "0.0"), 
+            'avg_rank': avg_rank, 'rentai_rate': rentai_rate,
+            '父': chichi, '母父': hahachichi
+        })
         
     score_df = pd.DataFrame(raw_scores)
     score_df['実力順位(RL)'] = score_df['avg_rank'].rank(method='min', ascending=True).astype(int)
     score_df['適正順位(CL)'] = score_df['rentai_rate'].rank(method='min', ascending=False).astype(int)
     
+    # スプレッドシート（分析シート）への書き込み用マトリックスは既存の5列を維持
     final_matrix = []
     for _, r in score_df.iterrows():
         final_matrix.append([r['馬番'], r['馬名'], str(r['単勝オッズ']), str(r['実力順位(RL)']), str(r['適正順位(CL)'])])
         
-    df_fresh = pd.DataFrame(final_matrix, columns=['馬番', '馬名', '単勝オッズ', '実力順位(RL)', '適正順位(CL)'])
-
     try:
         clear_data = [["", "", "", "", ""] for _ in range(24)]
         analysis_sheet.update(range_name='A2:E25', values=clear_data, value_input_option='USER_ENTERED')
@@ -355,7 +203,7 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     except Exception as e:
         log_text.write(f"※スプレッドシートへの記録をスキップしました: {str(e)}")
     
-    _, _, honmei_list, _, _, _, _, _, _, _, _, _, _, race_rank, _, honmei_exp = run_ai_core(df_fresh, "良")
+    _, _, honmei_list, _, _, _, _, _, _, _, _, _, _, race_rank, _, honmei_exp = run_ai_core(score_df, "良")
     
     st.session_state.race_history[race_id] = {
         'race_name': race_name,
@@ -363,7 +211,7 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
         'honmei': honmei_list,
         'honmei_exp': honmei_exp,
         'ai_decision': '買い' if race_rank != "見送り" else '見送り',
-        'df_raw': df_fresh
+        'df_raw': score_df  # 父と母父が含まれた状態のデータをセッションに保存
     }
 
 # ==========================================
@@ -457,7 +305,7 @@ if menu == "ダッシュボード":
                 st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
                 st.markdown("#### 📋 馬番データ詳細一覧")
                 if has_valid_data:
-                    display_cols = [c for c in ['馬番', '馬名', '単勝オッズ', '実力順位(RL)', '適正順位(CL)', 'AIスコア', '評価', '期待値', '判定', '着順', '単勝払戻金'] if c in df_calc.columns]
+                    display_cols = [c for c in ['馬番', '馬名', '父', '母父', '単勝オッズ', '実力順位(RL)', '適正順位(CL)', 'AIスコア', '評価', '期待値', '判定'] if c in df_calc.columns]
                     st.dataframe(df_calc[display_cols], use_container_width=True, hide_index=True, height=700)
     else:
         st.info("まだ解析されたレースがありません。左のメニューから実行してください。")
@@ -487,7 +335,6 @@ elif menu == "レース予測・自動実行":
             place_map_jra = {"01":"札幌", "02":"函館", "03":"福島", "04":"新潟", "05":"東京", "06":"中山", "07":"中京", "08":"京都", "09":"阪神", "10":"小倉"}
             
             inv_jra = {v: k for k, v in place_map_jra.items()}
-            
             if scan_jra: valid_place_codes.extend([inv_jra[p] for p in selected_jra_places])
 
             if not scan_jra:
@@ -621,7 +468,8 @@ elif menu == "レース予測・自動実行":
         
         st.markdown("---")
         st.subheader("【レース後】収支記録＆データ蓄積")
-        st.write("結果を取得すると、ダッシュボードに反映されると同時に「過去データ蓄積」シートに自動で保存されます。")
+        st.write("Colab版の全30項目に完全対応し、結果取得時に不足している馬体重や上がり3Fなどを一括補充してデータベースへ保存します。")
+        
         if st.button("💰 確定結果取得＆データベースへ保存"):
             with st.status("レース情報を特定中...", expanded=True) as status:
                 driver = None
@@ -655,24 +503,75 @@ elif menu == "レース予測・自動実行":
                         time.sleep(2)
                         soup = BeautifulSoup(driver.page_source, 'html.parser')
 
+                        # 🌟 App側でもColabと同じ全データスクレイピングを実行
+                        def clean_text(text):
+                            return re.sub(r'\s+', '', text.strip()) if text else ""
+                            
                         title_elem = soup.find(class_='RaceName')
-                        race_title = title_elem.text.strip() if title_elem else f"レースID:{found_id}"
-                        race_title = re.sub(r'\s+', ' ', race_title)
+                        race_title = re.sub(r'\s+', ' ', title_elem.text.strip()) if title_elem else f"レースID:{found_id}"
+
+                        track_type, distance, weather, track_cond = "", "", "", ""
+                        race_data_elem = soup.find(class_='RaceData01')
+                        if race_data_elem:
+                            rd_text = race_data_elem.text.replace('\xa0', ' ')
+                            m_type = re.search(r'(芝|ダ|障).*?(\d+)m', rd_text)
+                            if m_type: track_type, distance = m_type.group(1), m_type.group(2)
+                            m_weather = re.search(r'天候\s*:\s*([^\s/]+)', rd_text)
+                            if m_weather: weather = clean_text(m_weather.group(1))
+                            m_cond = re.search(r'(芝|ダ|障|馬場)\s*:\s*([^\s/]+)', rd_text)
+                            if m_cond: track_cond = clean_text(m_cond.group(2))
+
+                        result_table = soup.find('table', class_=re.compile(r'RaceTable', re.I))
+                        if not result_table:
+                            status.update(label="エラー: 結果テーブルが見つかりません", state="error")
+                            st.stop()
+                            
+                        headers = [th.text.strip().replace('\n', '') for th in result_table.find_all('th')]
+                        cols_map = {}
+                        for idx, th_text in enumerate(headers):
+                            if '着順' in th_text: cols_map['rank'] = idx
+                            elif '枠' in th_text: cols_map['waku'] = idx
+                            elif '馬番' in th_text: cols_map['umaban'] = idx
+                            elif '性齢' in th_text: cols_map['sex_age'] = idx
+                            elif '騎手' in th_text: cols_map['jockey'] = idx
+                            elif '斤量' in th_text: cols_map['kinryo'] = idx
+                            elif 'タイム' == th_text: cols_map['time'] = idx
+                            elif '通過' in th_text: cols_map['passing'] = idx
+                            elif '後3F' in th_text or '上り' in th_text or '上がり' in th_text: cols_map['f3'] = idx
+                            elif '人気' in th_text: cols_map['popularity'] = idx
+                            elif '馬体重' in th_text: cols_map['weight'] = idx
+                            elif '調教師' in th_text or '厩舎' in th_text: cols_map['trainer'] = idx
 
                         result_map = {}
-                        for tr in soup.find_all('tr'):
-                            rank_elem, umaban_elem = tr.find(class_=re.compile(r'Rank', re.I)), tr.find(class_=re.compile(r'Umaban', re.I))
-                            if rank_elem and umaban_elem:
-                                r_match, u_match = re.search(r'(\d+)', rank_elem.text.strip()), re.search(r'(\d+)', umaban_elem.text.strip())
-                                if r_match and u_match: result_map[u_match.group(1)] = r_match.group(1)
-                                
-                        tansho_payout = ""
-                        for tr in soup.find_all('tr'):
-                            if "単勝" in tr.get_text(separator='', strip=True):
-                                match = re.search(r'([0-9,]+)円', tr.text)
-                                if match: tansho_payout = match.group(1).replace(",", "")
-                                break
-                                    
+                        for tr in result_table.find_all('tr'):
+                            tds = tr.find_all('td')
+                            if len(tds) > max(cols_map.values(), default=-1):
+                                u_m = re.search(r'\d+', tds[cols_map['umaban']].text)
+                                if u_m:
+                                    u_num = str(int(u_m.group(0)))
+                                    result_map[u_num] = {
+                                        '着順': re.search(r'(\d+)', tds[cols_map['rank']].text).group(1) if 'rank' in cols_map and re.search(r'(\d+)', tds[cols_map['rank']].text) else "",
+                                        '枠番': clean_text(tds[cols_map['waku']].text) if 'waku' in cols_map else "",
+                                        '性齢': clean_text(tds[cols_map['sex_age']].text) if 'sex_age' in cols_map else "",
+                                        '騎手': clean_text(tds[cols_map['jockey']].text) if 'jockey' in cols_map else "",
+                                        '斤量': clean_text(tds[cols_map['kinryo']].text) if 'kinryo' in cols_map else "",
+                                        'タイム': clean_text(tds[cols_map['time']].text) if 'time' in cols_map else "",
+                                        '上がり3F': clean_text(tds[cols_map['f3']].text) if 'f3' in cols_map else "",
+                                        '通過順': clean_text(tds[cols_map['passing']].text) if 'passing' in cols_map else "",
+                                        '人気': clean_text(tds[cols_map['popularity']].text) if 'popularity' in cols_map else "",
+                                        '馬体重': clean_text(tds[cols_map['weight']].text) if 'weight' in cols_map else "",
+                                        '調教師': clean_text(tds[cols_map['trainer']].text) if 'trainer' in cols_map else "",
+                                    }
+
+                        tansho_payout = "0"
+                        for th in soup.find_all('th'):
+                            if '単勝' in th.text:
+                                row = th.find_parent('tr')
+                                if row:
+                                    m_pay = re.search(r'([0-9,]+)円', row.text)
+                                    if m_pay: tansho_payout = m_pay.group(1).replace(",", "")
+                                    break
+
                         ss = gc.open(ss_name)
                         
                         analysis_sheet = ss.worksheet("分析シート")
@@ -681,7 +580,7 @@ elif menu == "レース予測・自動実行":
                         for row in existing_horses:
                             if len(row) < 1 or not str(row[0]).strip(): continue
                             umaban = str(row[0]).strip()
-                            horse_rank = result_map.get(umaban, "")
+                            horse_rank = result_map.get(umaban, {}).get('着順', "")
                             horse_payout = tansho_payout if horse_rank == "1" else ""
                             q_data.append([horse_rank])
                             r_data.append([horse_payout])
@@ -690,6 +589,7 @@ elif menu == "レース予測・自動実行":
                         analysis_sheet.update(range_name=f"J2:J{end_row}", values=q_data, value_input_option='USER_ENTERED')
                         analysis_sheet.update(range_name=f"K2:K{end_row}", values=r_data, value_input_option='USER_ENTERED')
                         
+                        # 🌟 SessionStateに残っている「予測時」のデータと「レース後」のデータを合体
                         if found_id in st.session_state.race_history:
                             db_sheet = ss.worksheet("過去データ蓄積")
                             target_race = st.session_state.race_history[found_id]
@@ -699,26 +599,27 @@ elif menu == "レース予測・自動実行":
                             for idx, row in df_calc.iterrows():
                                 if pd.isna(row['馬番']) or row['馬番'] == "": continue
                                 u_num = str(row['馬番'])
-                                h_rank = result_map.get(u_num, "")
+                                r_info = result_map.get(u_num, {})
+                                h_rank = r_info.get('着順', "")
                                 h_pay = tansho_payout if h_rank == "1" else "0"
                                 
+                                # Session Stateから父・母父を取り出し
+                                chichi = row.get('父', '')
+                                hahachichi = row.get('母父', '')
+                                
+                                # Colabと全く同じ全30項目に流し込む
                                 append_rows.append([
-                                    date_str_single,
-                                    place_single,
-                                    race_title,
-                                    u_num,
-                                    row.get('馬名', ''),
-                                    row.get('単勝オッズ', ''),
-                                    row.get('実力順位(RL)', ''),
-                                    row.get('適正順位(CL)', ''),
-                                    row.get('AIスコア', ''),
-                                    row.get('評価', ''),
-                                    row.get('期待値', ''),
-                                    row.get('判定', ''),
-                                    h_rank,
-                                    h_pay
+                                    date_str_single, place_single, race_title, 
+                                    track_type, distance, weather, track_cond,
+                                    r_info.get('枠番', ''), u_num, row.get('馬名', ''), r_info.get('性齢', ''), 
+                                    r_info.get('騎手', ''), r_info.get('斤量', ''), r_info.get('馬体重', ''), r_info.get('調教師', ''), 
+                                    chichi, hahachichi, row.get('単勝オッズ', ''), r_info.get('人気', ''), 
+                                    row.get('実力順位(RL)', ''), row.get('適正順位(CL)', ''), 
+                                    row.get('AIスコア', ''), row.get('評価', ''), 
+                                    row.get('期待値', ''), row.get('判定', ''), 
+                                    h_rank, r_info.get('タイム', ''), r_info.get('上がり3F', ''), r_info.get('通過順', ''), h_pay
                                 ])
-                            
+                                
                             if append_rows:
                                 db_sheet.append_rows(append_rows, value_input_option='USER_ENTERED')
                                 status.update(label="💰 記録完了！データベースへの保存も成功しました。", state="complete", expanded=False)
