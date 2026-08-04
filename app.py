@@ -288,26 +288,32 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
         if umamei_clean in horse_links:
             db_url = horse_links[umamei_clean]
             
-            if db_url.startswith('http'):
-                full_db_url = db_url
-            elif db_url.startswith('//'):
-                full_db_url = "https:" + db_url
-            else:
-                full_db_url = "https://db.netkeiba.com" + db_url
+            if db_url.startswith('http'): full_db_url = db_url
+            elif db_url.startswith('//'): full_db_url = "https:" + db_url
+            else: full_db_url = "https://db.netkeiba.com" + db_url
             
             try:
-                # 🌟 真の解決策：Streamlit特有のBotブロックを回避するため、強力な偽装ヘッダー付きの requests を使用
-                # さらに、netkeibaのデータベースはEUC-JP固定なので、文字化けを防ぐため強制指定！
                 time.sleep(random.uniform(0.3, 0.8))
-                req_headers = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                    'Referer': 'https://race.netkeiba.com/'
-                }
-                res = requests.get(full_db_url, headers=req_headers, timeout=10)
-                res.encoding = 'EUC-JP'
-                db_soup = BeautifulSoup(res.text, 'html.parser')
+                db_html = ""
                 
+                # 🌟 【究極対策】パターン1：まずは爆速＆高精度な requests でアクセス（EUC-JP完全対応）
+                try:
+                    req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+                    res = requests.get(full_db_url, headers=req_headers, timeout=5)
+                    if res.status_code == 200:
+                        try: db_html = res.content.decode('euc-jp')
+                        except: db_html = res.content.decode('utf-8', errors='ignore')
+                except:
+                    pass
+                
+                # 🌟 【究極対策】パターン2：requestsがCloudflareに弾かれた場合は、ブラウザ(Selenium)に自動切り替え
+                if not db_html or 'db_h_race_results' not in db_html:
+                    driver.get(full_db_url)
+                    db_html = driver.page_source
+                    
+                db_soup = BeautifulSoup(db_html, 'html.parser')
                 result_table = db_soup.find('table', class_='db_h_race_results')
+                
                 if result_table:
                     headers_th = result_table.find_all('th')
                     rank_idx, dist_idx = -1, -1
@@ -325,12 +331,14 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
                                     ranks.append(int(match.group(1)))
                                     if len(ranks) >= 3: break
                         if ranks: avg_rank = sum(ranks) / len(ranks)
+                        
                         if dist_idx != -1 and track_type and distance:
                             t_runs, t_rentai = 0, 0
                             for tr in rows:
                                 cols = tr.find_all('td')
                                 if len(cols) > max(rank_idx, dist_idx):
-                                    d_txt, r_txt = cols[dist_idx].text.strip(), cols[rank_idx].text.strip()
+                                    d_txt = cols[dist_idx].text.strip()
+                                    r_txt = cols[rank_idx].text.strip()
                                     if track_type in d_txt and distance in d_txt:
                                         t_runs += 1
                                         r_m = re.search(r'(\d+)', r_txt)
