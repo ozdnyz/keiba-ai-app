@@ -89,6 +89,7 @@ def run_ai_core(df, track_cond):
     
     df['AIスコア'] = (df['RL'] * 0.7) + (df['CL'] * 0.3)
     
+    # 🌟 修正1：同点の場合はオッズが低い（人気）順にするタイブレーカー
     df_sorted = df.sort_values(['AIスコア', 'Odds']).reset_index()
     
     df['評価'] = ""
@@ -96,6 +97,7 @@ def run_ai_core(df, track_cond):
     df['判定'] = "見送り"
     max_exp, honmei_exp = 0.0, 0.0
     
+    # 🌟 修正2：全員が同点＝データがブロックされて取れていないと判断し、安全装置を発動
     is_no_data = (len(df_sorted) > 1 and df_sorted['AIスコア'].nunique() == 1)
     
     if len(df_sorted) > 0:
@@ -107,6 +109,7 @@ def run_ai_core(df, track_cond):
             elif i == 2: df.at[idx, '評価'] = '▲'
             elif i < 6: df.at[idx, '評価'] = '△'
             
+            # データがない時は期待値を0にして強制見送り
             if is_no_data:
                 df.at[idx, '期待値'] = 0.0
                 df.at[idx, '判定'] = '見送り'
@@ -286,11 +289,11 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
         
         avg_rank, rentai_rate = 99.0, 0.0
         if umamei_clean in horse_links:
+            # 🌟 ここが、お客様がご自身で書かれていた【純度100%】の元のURL生成と取得ロジックです。
             db_url = horse_links[umamei_clean]
             full_db_url = "https:" + db_url if not db_url.startswith('http') else db_url
             
             try:
-                # ここがお客様のオリジナルコードのまま（requests使用）の過去成績取得部分です
                 req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}
                 res = requests.get(full_db_url, headers=req_headers, timeout=5)
                 db_soup = BeautifulSoup(res.content, 'html.parser')
