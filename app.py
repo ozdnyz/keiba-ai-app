@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 import re
 import time
 import random
+import requests
 import json
 import gspread
 import pandas as pd
@@ -295,10 +296,16 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
                 full_db_url = "https://db.netkeiba.com" + db_url
             
             try:
-                # 🌟 真の解決策：過去成績も「完全にブラウザ(Selenium)経由」でアクセスし、Botブロックをすり抜ける！
-                time.sleep(random.uniform(0.6, 1.5))
-                driver.get(full_db_url)
-                db_soup = BeautifulSoup(driver.page_source, 'html.parser')
+                # 🌟 真の解決策：Streamlit特有のBotブロックを回避するため、強力な偽装ヘッダー付きの requests を使用
+                # さらに、netkeibaのデータベースはEUC-JP固定なので、文字化けを防ぐため強制指定！
+                time.sleep(random.uniform(0.3, 0.8))
+                req_headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Referer': 'https://race.netkeiba.com/'
+                }
+                res = requests.get(full_db_url, headers=req_headers, timeout=10)
+                res.encoding = 'EUC-JP'
+                db_soup = BeautifulSoup(res.text, 'html.parser')
                 
                 result_table = db_soup.find('table', class_='db_h_race_results')
                 if result_table:
