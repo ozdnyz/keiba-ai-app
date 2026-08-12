@@ -12,12 +12,12 @@ import pandas as pd
 from datetime import datetime
 
 # ==========================================
-# 🎨 ページ設定
+# 🎨 ページ設定（最初に記述する必要があります）
 # ==========================================
 st.set_page_config(page_title="Keiba AI Core", page_icon="♞", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
-# 💅 カスタムCSS（左：ダーク、右：ライトのハイブリッド）
+# 💅 カスタムCSS（安全な左：ダーク、右：ライトのハイブリッド）
 # ==========================================
 st.markdown("""
 <style>
@@ -27,38 +27,37 @@ st.markdown("""
         border-right: 1px solid #2D3748;
     }
     
-    /* サイドバー内のテキストを白っぽく */
-    [data-testid="stSidebar"] * {
-        color: #CBD5E1;
+    /* 🌟 文字が消えないように、サイドバー内のすべてのテキストを強制的に白系にする */
+    [data-testid="stSidebar"] p, 
+    [data-testid="stSidebar"] span, 
+    [data-testid="stSidebar"] div, 
+    [data-testid="stSidebar"] label {
+        color: #F8FAFC !important;
     }
 
-    /* 🎯 メニュー（ラジオボタン）のデザイン変更 */
-    [data-testid="stSidebar"] [role="radiogroup"] label div:first-child {
-        display: none;
-    }
+    /* 🎯 メニューの余白と背景ハイライト */
     [data-testid="stSidebar"] [role="radiogroup"] {
-        gap: 0.5rem;
+        gap: 0.8rem;
     }
     [data-testid="stSidebar"] [role="radiogroup"] label {
-        padding: 12px 16px;
+        padding: 10px 15px;
         border-radius: 8px;
-        margin-bottom: 4px;
-        color: #94A3B8;
+        background-color: rgba(255, 255, 255, 0.05); /* うっすら背景をつけて枠を見せる */
         transition: all 0.2s ease;
         cursor: pointer;
-        border: none;
     }
     [data-testid="stSidebar"] [role="radiogroup"] label:hover {
-        background-color: rgba(255, 255, 255, 0.05);
-        color: #FFFFFF;
+        background-color: rgba(255, 255, 255, 0.1);
     }
+    
     /* 選択中のメニューのスタイル */
     [data-testid="stSidebar"] [role="radiogroup"] label[aria-checked="true"] {
         background-color: #292E4F !important;
+        border-left: 4px solid #818CF8;
     }
     [data-testid="stSidebar"] [role="radiogroup"] label[aria-checked="true"] p {
         color: #818CF8 !important;
-        font-weight: 600;
+        font-weight: bold;
     }
 
     /* 📊 メイン画面（右側）のカスタムカードデザイン（見やすいライトテーマ用） */
@@ -459,11 +458,12 @@ with st.sidebar:
     
     menu = st.radio("", ["📊 ダッシュボード", "🚀 レース予測・自動実行", "🔧 AIチューニング（月次）"], label_visibility="collapsed")
     
-    st.markdown("<div style='margin-top: 55vh;'></div>", unsafe_allow_html=True)
+    # 🌟 見切れ防止：vhをやめて100pxの安全な固定余白に変更
+    st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
     
     st.markdown("""
-    <div style='border-top: 1px solid #2D3748; padding-top: 20px; display: flex; align-items: center;'>
-        <div style='background-color: #8B5CF6; color: white; width: 42px; height: 42px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.2rem; margin-right: 15px;'>U</div>
+    <div style='border-top: 1px solid #2D3748; padding-top: 20px; display: flex; align-items: center; margin-bottom: 20px;'>
+        <div style='background-color: #8B5CF6; color: white; width: 42px; height: 42px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.2rem; margin-right: 15px; flex-shrink: 0;'>U</div>
         <div>
             <div style='font-weight: 700; font-size: 1rem; color: #FFFFFF;'>User (Chromebook)</div>
             <div style='color: #94A3B8; font-size: 0.85rem; display: flex; align-items: center; margin-top: 3px;'>
