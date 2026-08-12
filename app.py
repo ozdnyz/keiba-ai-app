@@ -1,3 +1,176 @@
+import streamlit as st
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from bs4 import BeautifulSoup
+import re
+import time
+import random
+import requests
+import json
+import gspread
+import pandas as pd
+import altair as alt
+from datetime import datetime
+
+# ==========================================
+# 🔐 Googleスプレッドシート認証
+# ==========================================
+creds_dict = st.secrets["gcp_service_account"]
+gc = gspread.service_account_from_dict(creds_dict)
+ss_name = "競馬AIシステム_Core"
+
+# ==========================================
+# 💾 データ永続化＆過去データ蓄積モジュール
+# ==========================================
+def save_history_to_sheet(sheet, history_dict):
+    try:
+        sheet.batch_clear(["AA1:AA100"])
+        cells = []
+        for r_id, data in history_dict.items():
+            save_data = {
+                r_id: {
+                    'race_name': data['race_name'],
+                    'race_rank': data['race_rank'],
+                    'honmei': data['honmei'],
+                    'honmei_exp': data['honmei_exp'],
+                    'ai_decision': data['ai_decision'],
+                    'df_raw': data['df_raw'].to_dict(orient='records')
+                }
+            }
+            cells.append([json.dumps(save_data, ensure_ascii=False)])
+        if cells:
+            sheet.update(range_name=f'AA1:AA{len(cells)}', values=cells, value_input_option='USER_ENTERED')
+    except Exception:
+        pass
+
+def load_history_from_sheet(sheet):
+    history = {}
+    try:
+        vals = sheet.get('AA1:AA100')
+        for row in vals:
+            if len(row) > 0 and row[0]:
+                save_data = json.loads(row[0])
+                for r_id, data in save_data.items():
+                    history[r_id] = {
+                        'race_name': data['race_name'],
+                        'race_rank': data['race_rank'],
+                        'honmei': data['honmei'],
+                        'honmei_exp': data['honmei_exp'],
+                        'ai_decision': data['ai_decision'],
+                        'df_raw': pd.DataFrame(data['df_raw'])
+                    }
+    except Exception:
+        pass
+    return history
+
+if 'race_history' not in st.session_state:
+    st.session_state.race_history = {}
+    try:
+        ss = gc.open(ss_name)
+        sheet = ss.worksheet("分析シート")
+        st.session_state.race_history = load_history_from_sheet(sheet)
+    except Exception:
+        pass
+
+# ==========================================
+# 🧠 独自AIエンジン
+# ==========================================
+def run_ai_core(df, track_cond):
+    if df.empty or '実力順位(RL)' not in df.columns or '適正順位(CL)' not in df.columns:
+        return df, False, [], [], [], [], 0, 0, 0, 0, 0.0, "#F8FAFC", "", "エラー", 0.0, 0.0
+    
+    df = df[df['馬番'] != ""].copy()
+    if df['実力順位(RL)'].replace('', pd.NA).isna().all():
+        return df, False, [], [], [], [], 0, 0, 0, 0, 0.0, "#F8FAFC", "", "データ待機", 0.0, 0.0
+
+    df['Odds'] = pd.to_numeric(df['単勝オッズ'], errors='coerce').fillna(0)
+    df['RL'] = pd.to_numeric(df['実力順位(RL)'], errors='coerce').fillna(99)
+    df['CL'] = pd.to_numeric(df['適正順位(CL)'], errors='coerce').fillna(99)
+    
+    df['AIスコア'] = (df['RL'] * 0.7) + (df['CL'] * 0.3)
+    
+    df_sorted = df.sort_values(['AIスコア', 'Odds']).reset_index()
+    
+    df['評価'] = ""
+    df['期待値'] = 0.0
+    df['判定'] = "見送り"
+    max_exp, honmei_exp = 0.0, 0.0
+    
+    is_no_data = (len(df_sorted) > 1 and df_sorted['AIスコア'].nunique() == 1)
+    
+    if len(df_sorted) > 0:
+        sum_inv = (1.0 / df_sorted['AIスコア']).replace([float('inf')], 0).sum()
+        for i, row in df_sorted.iterrows():
+            idx = row['index']
+            if i == 0: df.at[idx, '評価'] = '◎'
+            elif i == 1: df.at[idx, '評価'] = '◯'
+            elif i == 2: df.at[idx, '評価'] = '▲'
+            elif i < 6: df.at[idx, '評価'] = '△'
+            
+            if is_no_data:
+                df.at[idx, '期待値'] = 0.0
+                df.at[idx, '判定'] = '見送り'
+            else:
+                score = row['AIスコア']
+                if sum_inv > 0 and score > 0:
+                    win_prob = (1.0 / score) / sum_inv
+                    exp_val = win_prob * row['Odds']
+                    if track_cond in ["重", "不良"]: exp_val *= 0.95
+                    
+                    df.at[idx, '期待値'] = round(exp_val, 2)
+                    if exp_val > max_exp: max_exp = round(exp_val, 2)
+                    if i == 0: honmei_exp = round(exp_val, 2)
+                    if exp_val >= 1.0: df.at[idx, '判定'] = '買い'
+                    
+    if honmei_exp >= 1.5: race_rank = "⭐⭐⭐ S (激アツ)"
+    elif honmei_exp >= 1.2: race_rank = "⭐⭐ A (勝負)"
+    elif honmei_exp >= 1.0: race_rank = "⭐ B (買い)"
+    else: race_rank = "見送り"
+                    
+    honmei = df[df['評価'] == '◎']['馬番'].tolist()
+    taikou = df[df['評価'] == '◯']['馬番'].tolist()
+    tana = df[df['評価'] == '▲']['馬番'].tolist()
+    himo = df[df['評価'] == '△']['馬番'].tolist()
+    buy_count = len(df[df['判定'] == '買い'])
+    
+    for col in ['AI投資額', 'AI払戻金']:
+        if col not in df.columns: df[col] = 0
+    df['AI投資額'] = pd.to_numeric(df['AI投資額'], errors='coerce').fillna(0)
+    df['AI払戻金'] = pd.to_numeric(df['AI払戻金'], errors='coerce').fillna(0)
+    ai_invest = df['AI投資額'].sum()
+    ai_return = df['AI払戻金'].sum()
+    ai_profit = int(ai_return - ai_invest)
+    ai_roi = round((ai_return / ai_invest * 100), 1) if ai_invest > 0 else 0.0
+    profit_color = "#10B981" if ai_profit > 0 else ("#EF4444" if ai_profit < 0 else "#F8FAFC")
+    sign = "+" if ai_profit > 0 else ""
+    
+    return df, True, honmei, taikou, tana, himo, buy_count, ai_invest, ai_return, ai_profit, ai_roi, profit_color, sign, race_rank, max_exp, honmei_exp
+
+# ==========================================
+# 🛠️ ブラウザ起動モジュール
+# ==========================================
+def get_driver():
+    options = Options()
+    options.add_argument('--headless=new')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--window-size=1920,1080')
+    options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36')
+    options.add_argument('--disable-blink-features=AutomationControlled')
+    options.add_argument('--blink-settings=imagesEnabled=false')
+    options.add_argument('--disable-extensions')
+    
+    try:
+        from selenium.webdriver.chrome.service import Service
+        service = Service('/usr/bin/chromedriver')
+        options.binary_location = '/usr/bin/chromium'
+        return webdriver.Chrome(service=service, options=options)
+    except Exception:
+        import chromedriver_autoinstaller
+        chromedriver_autoinstaller.install()
+        return webdriver.Chrome(options=options)
+
 # ==========================================
 # 🛠️ 1レース解析用の共通モジュール
 # ==========================================
@@ -131,7 +304,6 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
                 res = requests.get(full_db_url, headers=req_headers, timeout=5)
                 db_soup = BeautifulSoup(res.content, 'html.parser')
                 
-                # 🌟 App側にも「強固な血統表ロジック」を適用
                 blood_table = db_soup.find('table', class_='blood_table')
                 if blood_table:
                     rows_b = blood_table.find_all('tr')
@@ -180,7 +352,6 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
             
             time.sleep(0.2)
         
-        # 🌟 Appのデータフレームにも父と母父の情報を追加して保持
         raw_scores.append({
             '馬番': u_num, '馬名': umamei, '単勝オッズ': odds_map.get(u_num, "0.0"), 
             'avg_rank': avg_rank, 'rentai_rate': rentai_rate,
@@ -191,7 +362,6 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     score_df['実力順位(RL)'] = score_df['avg_rank'].rank(method='min', ascending=True).astype(int)
     score_df['適正順位(CL)'] = score_df['rentai_rate'].rank(method='min', ascending=False).astype(int)
     
-    # スプレッドシート（分析シート）への書き込み用マトリックスは既存の5列を維持
     final_matrix = []
     for _, r in score_df.iterrows():
         final_matrix.append([r['馬番'], r['馬名'], str(r['単勝オッズ']), str(r['実力順位(RL)']), str(r['適正順位(CL)'])])
@@ -211,7 +381,7 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
         'honmei': honmei_list,
         'honmei_exp': honmei_exp,
         'ai_decision': '買い' if race_rank != "見送り" else '見送り',
-        'df_raw': score_df  # 父と母父が含まれた状態のデータをセッションに保存
+        'df_raw': score_df  
     }
 
 # ==========================================
@@ -234,7 +404,6 @@ st.markdown("""
 
 with st.sidebar:
     st.markdown("<h2 style='color: white; margin-bottom: 30px;'>🐴 Keiba AI Core</h2>", unsafe_allow_html=True)
-    # 🌟 メニューに「AIチューニング（月次）」を追加
     menu = st.radio("", ["ダッシュボード", "レース予測・自動実行", "🔧 AIチューニング（月次）"], label_visibility="collapsed")
     st.markdown("<div style='margin-top: 50vh;'></div>", unsafe_allow_html=True)
     st.markdown("""
@@ -517,7 +686,6 @@ elif menu == "レース予測・自動実行":
                             m_type = re.search(r'(芝|ダ|障).*?(\d+)m', rd_text)
                             if m_type: 
                                 track_type, distance = m_type.group(1), m_type.group(2)
-                                # 🌟 回りの自動判定を追加
                                 if place_single == "新潟" and distance == "1000":
                                     direction = "直"
                                 elif place_single in ["東京", "中京", "新潟"]:
@@ -614,7 +782,6 @@ elif menu == "レース予測・自動実行":
                                 chichi = row.get('父', '')
                                 hahachichi = row.get('母父', '')
                                 
-                                # 🌟 変更点：「回り」を挿入して全31項目に合わせる
                                 append_rows.append([
                                     date_str_single, place_single, race_title, 
                                     track_type, distance, direction, weather, track_cond,
@@ -650,7 +817,6 @@ elif menu == "🔧 AIチューニング（月次）":
     st.markdown("<p class='main-header'>AIチューニング用 月次レポート生成</p>", unsafe_allow_html=True)
     st.write("データベース（スプレッドシート）から当月の成績を自動計算し、Geminiに投げるためのプロンプトを生成します。")
     
-    # スプレッドシートからデータを取得
     try:
         ss = gc.open(ss_name)
         db_sheet = ss.worksheet("過去データ蓄積")
@@ -660,32 +826,24 @@ elif menu == "🔧 AIチューニング（月次）":
         data = []
 
     if len(data) > 1:
-        # 1行目をヘッダーとしてデータフレーム化
         df_history = pd.DataFrame(data[1:], columns=data[0])
         
-        # 「日付」列から「YYYY/MM」の月データだけを抽出してリスト化
         df_history['年月'] = df_history['日付'].apply(lambda x: str(x)[:7] if len(str(x)) >= 7 else "")
         available_months = sorted(list(set([m for m in df_history['年月'] if m])), reverse=True)
         if not available_months: available_months = [datetime.now().strftime("%Y/%m")]
         
-        # ユーザーが月を選択
         target_month = st.selectbox("📅 集計する月を選択してください", available_months)
-        
-        # 選択された月のデータに絞り込み
         df_month = df_history[df_history['年月'] == target_month].copy()
         
-        # 🌟 自動集計ロジック：◎（本命）を打った馬だけを抽出
         if '評価' in df_month.columns:
             df_honmei = df_month[df_month['評価'] == '◎'].copy()
             df_honmei['払戻金'] = pd.to_numeric(df_honmei['払戻金'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
             
-            # 1. 全レースの成績計算
             total_races = len(df_honmei)
-            total_invest_all = total_races * 100 # 1レース100円計算
+            total_invest_all = total_races * 100
             total_return_all = df_honmei['払戻金'].sum()
             recovery_all = round((total_return_all / total_invest_all * 100), 1) if total_invest_all > 0 else 0.0
             
-            # 2. 買いレースの成績計算（AI判定が「買い」のもの）
             df_buy = df_honmei[df_honmei['AI判定'] == '買い'].copy()
             buy_races = len(df_buy)
             total_invest_buy = buy_races * 100
@@ -727,7 +885,6 @@ elif menu == "🔧 AIチューニング（月次）":
     st.subheader("📋 コピー用プロンプト")
     st.info("右上のコピーボタン（📋マーク）を押して、Gemini（チューナーGem）に貼り付けてください。成績は自動で埋め込まれています。")
     
-    # 🌟 成績が自動で埋め込まれるプロンプト
     tuning_prompt = f"""以下の月次データを基に、LightGBMモデルおよび期待値フィルターのチューニング案を提示してください。
 今回は、AIの純粋な予測力を測る「全レース成績」と、投資システムとしての精度を測る「買いレース成績」を分けて提出します。
 
