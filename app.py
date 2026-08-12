@@ -12,44 +12,33 @@ import pandas as pd
 from datetime import datetime
 
 # ==========================================
-# 🎨 ページ設定（最初に記述する必要があります）
+# 🎨 ページ設定
 # ==========================================
 st.set_page_config(page_title="Keiba AI Core", page_icon="♞", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
-# 💅 カスタムCSS（1枚目の画像のデザインを完全再現）
+# 💅 カスタムCSS（左：ダーク、右：ライトのハイブリッド）
 # ==========================================
 st.markdown("""
 <style>
-    /* アプリ全体の背景と文字色をダークモードに */
-    .stApp {
-        background-color: #0F172A;
-        color: #F8FAFC;
-    }
-
-    /* 🎯 サイドバー全体の設定（1枚目画像のダークネイビー色） */
+    /* 🎯 サイドバー全体の設定（スタイリッシュなダークネイビー） */
     [data-testid="stSidebar"] {
         background-color: #171B2B !important;
         border-right: 1px solid #2D3748;
     }
     
-    /* サイドバー内のテキストをデフォルト白に */
+    /* サイドバー内のテキストを白っぽく */
     [data-testid="stSidebar"] * {
         color: #CBD5E1;
     }
 
     /* 🎯 メニュー（ラジオボタン）のデザイン変更 */
-    /* デフォルトの丸いボタンを非表示にする */
     [data-testid="stSidebar"] [role="radiogroup"] label div:first-child {
         display: none;
     }
-    
-    /* ボタン同士の間隔 */
     [data-testid="stSidebar"] [role="radiogroup"] {
         gap: 0.5rem;
     }
-
-    /* メニュー項目の基本スタイル */
     [data-testid="stSidebar"] [role="radiogroup"] label {
         padding: 12px 16px;
         border-radius: 8px;
@@ -59,38 +48,29 @@ st.markdown("""
         cursor: pointer;
         border: none;
     }
-
-    /* マウスを乗せた時（ホバー）のスタイル */
     [data-testid="stSidebar"] [role="radiogroup"] label:hover {
         background-color: rgba(255, 255, 255, 0.05);
         color: #FFFFFF;
     }
-
-    /* 🌟 選択中のメニューのスタイル（1枚目画像のインディゴ背景） */
+    /* 選択中のメニューのスタイル */
     [data-testid="stSidebar"] [role="radiogroup"] label[aria-checked="true"] {
         background-color: #292E4F !important;
     }
-    
-    /* 選択中のメニューの文字色（明るいインディゴブルー） */
     [data-testid="stSidebar"] [role="radiogroup"] label[aria-checked="true"] p {
         color: #818CF8 !important;
         font-weight: 600;
     }
 
-    /* 既存のKPIカード等のデザイン */
-    .kpi-card { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); }
-    .kpi-title { color: #94A3B8; font-size: 0.9rem; margin-bottom: 8px; }
-    .kpi-value { font-size: 2.2rem; font-weight: 700; margin: 0; color: #FFFFFF; }
-    .stButton>button { font-weight: 600; transition: all 0.3s ease; }
-    .main-header { font-size: 1.8rem; font-weight: 700; margin-bottom: 0; color: #FFFFFF; }
-    .sub-header { color: #94A3B8; font-size: 0.9rem; margin-bottom: 20px; }
-    .ticket-card { background-color: #1E293B; border-left: 4px solid #10B981; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
-    .streamlit-expanderHeader { font-size: 1.1rem; font-weight: 600; background-color: #1E293B; border-radius: 8px; color: #FFFFFF; }
+    /* 📊 メイン画面（右側）のカスタムカードデザイン（見やすいライトテーマ用） */
+    .kpi-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
+    .kpi-title { color: #64748B; font-size: 0.9rem; margin-bottom: 8px; font-weight: 600; }
+    .kpi-value { font-size: 2.2rem; font-weight: 700; margin: 0; color: #1E293B; }
     
-    /* スプレッドシート（データフレーム）の文字色調整 */
-    [data-testid="stDataFrame"] {
-        background-color: #1E293B;
-    }
+    .stButton>button { font-weight: 600; transition: all 0.3s ease; }
+    .main-header { font-size: 1.8rem; font-weight: 700; margin-bottom: 0; color: #1E293B; }
+    .sub-header { color: #64748B; font-size: 0.9rem; margin-bottom: 20px; }
+    
+    .ticket-card { background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 4px solid #10B981; padding: 15px; border-radius: 8px; margin-bottom: 10px; color: #1E293B; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -159,11 +139,11 @@ if 'race_history' not in st.session_state:
 # ==========================================
 def run_ai_core(df, track_cond):
     if df.empty or '実力順位(RL)' not in df.columns or '適正順位(CL)' not in df.columns:
-        return df, False, [], [], [], [], 0, 0, 0, 0, 0.0, "#F8FAFC", "", "エラー", 0.0, 0.0
+        return df, False, [], [], [], [], 0, 0, 0, 0, 0.0, "#64748B", "", "エラー", 0.0, 0.0
     
     df = df[df['馬番'] != ""].copy()
     if df['実力順位(RL)'].replace('', pd.NA).isna().all():
-        return df, False, [], [], [], [], 0, 0, 0, 0, 0.0, "#F8FAFC", "", "データ待機", 0.0, 0.0
+        return df, False, [], [], [], [], 0, 0, 0, 0, 0.0, "#64748B", "", "データ待機", 0.0, 0.0
 
     df['Odds'] = pd.to_numeric(df['単勝オッズ'], errors='coerce').fillna(0)
     df['RL'] = pd.to_numeric(df['実力順位(RL)'], errors='coerce').fillna(99)
@@ -223,7 +203,7 @@ def run_ai_core(df, track_cond):
     ai_return = df['AI払戻金'].sum()
     ai_profit = int(ai_return - ai_invest)
     ai_roi = round((ai_return / ai_invest * 100), 1) if ai_invest > 0 else 0.0
-    profit_color = "#10B981" if ai_profit > 0 else ("#EF4444" if ai_profit < 0 else "#F8FAFC")
+    profit_color = "#10B981" if ai_profit > 0 else ("#EF4444" if ai_profit < 0 else "#64748B")
     sign = "+" if ai_profit > 0 else ""
     
     return df, True, honmei, taikou, tana, himo, buy_count, ai_invest, ai_return, ai_profit, ai_roi, profit_color, sign, race_rank, max_exp, honmei_exp
@@ -467,10 +447,9 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     }
 
 # ==========================================
-# 📐 サイドバー構築（1枚目画像のUIを再現）
+# 📐 サイドバー構築
 # ==========================================
 with st.sidebar:
-    # ヘッダー部分（紫のチェスナイト風アイコン＋タイトル）
     st.markdown("""
     <div style='display: flex; align-items: center; margin-bottom: 2rem; margin-top: 10px;'>
         <span style='color: #6366F1; font-size: 2.2rem; margin-right: 12px; line-height: 1;'>♞</span>
@@ -478,13 +457,10 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    # 🌟 メニューに絵文字を追加して、1枚目のアイコンっぽさを出しています
     menu = st.radio("", ["📊 ダッシュボード", "🚀 レース予測・自動実行", "🔧 AIチューニング（月次）"], label_visibility="collapsed")
     
-    # 余白を追加してユーザー情報を一番下に押し下げる
     st.markdown("<div style='margin-top: 55vh;'></div>", unsafe_allow_html=True)
     
-    # フッター部分（紫のアイコン、User (Chromebook)、システム稼働中の表記）
     st.markdown("""
     <div style='border-top: 1px solid #2D3748; padding-top: 20px; display: flex; align-items: center;'>
         <div style='background-color: #8B5CF6; color: white; width: 42px; height: 42px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.2rem; margin-right: 15px;'>U</div>
@@ -527,10 +503,10 @@ if menu == "📊 ダッシュボード":
             
             with st.expander(expander_title, expanded=False):
                 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-                with kpi1: st.markdown(f'<div class="kpi-card"><div class="kpi-title">AI判定 (買い指定)</div><div class="kpi-value">{buy_count}<span style="font-size:1.2rem; color:#94A3B8;">頭</span></div></div>', unsafe_allow_html=True)
+                with kpi1: st.markdown(f'<div class="kpi-card"><div class="kpi-title">AI判定 (買い指定)</div><div class="kpi-value">{buy_count}<span style="font-size:1.2rem; color:#64748B;">頭</span></div></div>', unsafe_allow_html=True)
                 with kpi2: st.markdown(f'<div class="kpi-card"><div class="kpi-title">現在の馬場設定</div><div class="kpi-value" style="color:#F59E0B;">{track_cond}</div></div>', unsafe_allow_html=True)
-                with kpi3: st.markdown(f'<div class="kpi-card"><div class="kpi-title">AI投資額</div><div class="kpi-value">{int(ai_invest):,}<span style="font-size:1.2rem; color:#94A3B8;">円</span></div></div>', unsafe_allow_html=True)
-                with kpi4: st.markdown(f'<div class="kpi-card"><div class="kpi-title">AIシミュレーション利益</div><div class="kpi-value" style="color:{profit_color};">{sign}{ai_profit:,}<span style="font-size:1.2rem; color:#94A3B8;">円</span></div></div>', unsafe_allow_html=True)
+                with kpi3: st.markdown(f'<div class="kpi-card"><div class="kpi-title">AI投資額</div><div class="kpi-value">{int(ai_invest):,}<span style="font-size:1.2rem; color:#64748B;">円</span></div></div>', unsafe_allow_html=True)
+                with kpi4: st.markdown(f'<div class="kpi-card"><div class="kpi-title">AIシミュレーション利益</div><div class="kpi-value" style="color:{profit_color};">{sign}{ai_profit:,}<span style="font-size:1.2rem; color:#64748B;">円</span></div></div>', unsafe_allow_html=True)
 
                 st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
                 st.markdown("#### 🎯 推奨買い目カード")
@@ -547,11 +523,11 @@ if menu == "📊 ダッシュボード":
                     
                     col_t1, col_t2, col_t3 = st.columns(3)
                     with col_t1:
-                        st.markdown(f"""<div class="ticket-card"><div style="color:#94A3B8; font-size:0.9rem; margin-bottom:5px;">おすすめ券種① (軸)</div><div style="font-size:1.3rem; font-weight:bold;">単勝 / 複勝</div><div style="color:#10B981; font-size:1.5rem; font-weight:bold; margin-top:10px;">{h_str}</div></div>""", unsafe_allow_html=True)
+                        st.markdown(f"""<div class="ticket-card"><div style="color:#64748B; font-size:0.9rem; margin-bottom:5px;">おすすめ券種① (軸)</div><div style="font-size:1.3rem; font-weight:bold;">単勝 / 複勝</div><div style="color:#10B981; font-size:1.5rem; font-weight:bold; margin-top:10px;">{h_str}</div></div>""", unsafe_allow_html=True)
                     with col_t2:
-                        st.markdown(f"""<div class="ticket-card"><div style="color:#94A3B8; font-size:0.9rem; margin-bottom:5px;">おすすめ券種② (基本)</div><div style="font-size:1.3rem; font-weight:bold;">馬連 / ワイド流し</div><div style="color:#3B82F6; font-size:1.5rem; font-weight:bold; margin-top:10px;">{h_str} <span style="color:#94A3B8; font-size:1.2rem;">→</span> {相手_str}</div></div>""", unsafe_allow_html=True)
+                        st.markdown(f"""<div class="ticket-card"><div style="color:#64748B; font-size:0.9rem; margin-bottom:5px;">おすすめ券種② (基本)</div><div style="font-size:1.3rem; font-weight:bold;">馬連 / ワイド流し</div><div style="color:#3B82F6; font-size:1.5rem; font-weight:bold; margin-top:10px;">{h_str} <span style="color:#64748B; font-size:1.2rem;">→</span> {相手_str}</div></div>""", unsafe_allow_html=True)
                     with col_t3:
-                        st.markdown(f"""<div class="ticket-card"><div style="color:#94A3B8; font-size:0.9rem; margin-bottom:5px;">おすすめ券種③ (三連系)</div><div style="font-size:1.3rem; font-weight:bold;">3連複フォーメーション</div><div style="color:#EF4444; font-size:1.2rem; font-weight:bold; margin-top:10px;">1段目: {h_str}<br>2段目: {t_str} - {tn_str}<br>3段目: {相手_str}</div></div>""", unsafe_allow_html=True)
+                        st.markdown(f"""<div class="ticket-card"><div style="color:#64748B; font-size:0.9rem; margin-bottom:5px;">おすすめ券種③ (三連系)</div><div style="font-size:1.3rem; font-weight:bold;">3連複フォーメーション</div><div style="color:#EF4444; font-size:1.2rem; font-weight:bold; margin-top:10px;">1段目: {h_str}<br>2段目: {t_str} - {tn_str}<br>3段目: {相手_str}</div></div>""", unsafe_allow_html=True)
 
                 st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
                 st.markdown("#### 📋 馬番データ詳細一覧")
@@ -946,10 +922,10 @@ elif menu == "🔧 AIチューニング（月次）":
     st.markdown("### 📊 自動計算された成績データ")
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown(f'<div class="kpi-card"><div class="kpi-title">① 全レース対象の ◎回収率</div><div class="kpi-value">{recovery_all}<span style="font-size:1.2rem;"> ％</span></div><div style="color:#94A3B8; font-size:0.8rem; margin-top:5px;">対象: {total_races}レース</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card"><div class="kpi-title">① 全レース対象の ◎回収率</div><div class="kpi-value">{recovery_all}<span style="font-size:1.2rem; color:#64748B;"> ％</span></div><div style="color:#64748B; font-size:0.8rem; margin-top:5px;">対象: {total_races}レース</div></div>', unsafe_allow_html=True)
     with col2:
         profit_color = "#10B981" if recovery_buy >= 100 else "#EF4444"
-        st.markdown(f'<div class="kpi-card"><div class="kpi-title">② 買いレース対象の ◎回収率</div><div class="kpi-value" style="color:{profit_color};">{recovery_buy}<span style="font-size:1.2rem;"> ％</span></div><div style="color:#94A3B8; font-size:0.8rem; margin-top:5px;">対象: {buy_races}レース</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card"><div class="kpi-title">② 買いレース対象の ◎回収率</div><div class="kpi-value" style="color:{profit_color};">{recovery_buy}<span style="font-size:1.2rem; color:#64748B;"> ％</span></div><div style="color:#64748B; font-size:0.8rem; margin-top:5px;">対象: {buy_races}レース</div></div>', unsafe_allow_html=True)
 
     st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
     
