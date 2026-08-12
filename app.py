@@ -234,7 +234,8 @@ st.markdown("""
 
 with st.sidebar:
     st.markdown("<h2 style='color: white; margin-bottom: 30px;'>🐴 Keiba AI Core</h2>", unsafe_allow_html=True)
-    menu = st.radio("", ["ダッシュボード", "レース予測・自動実行"], label_visibility="collapsed")
+    # 🌟 メニューに「AIチューニング（月次）」を追加
+    menu = st.radio("", ["ダッシュボード", "レース予測・自動実行", "🔧 AIチューニング（月次）"], label_visibility="collapsed")
     st.markdown("<div style='margin-top: 50vh;'></div>", unsafe_allow_html=True)
     st.markdown("""
     <div style='border-top: 1px solid #334155; padding-top: 20px; display: flex; align-items: center;'>
@@ -641,3 +642,116 @@ elif menu == "レース予測・自動実行":
                     if driver:
                         try: driver.quit()
                         except: pass
+
+# ==========================================
+# 🔧 メイン画面：AIチューニング用プロンプト生成
+# ==========================================
+elif menu == "🔧 AIチューニング（月次）":
+    st.markdown("<p class='main-header'>AIチューニング用 月次レポート生成</p>", unsafe_allow_html=True)
+    st.write("データベース（スプレッドシート）から当月の成績を自動計算し、Geminiに投げるためのプロンプトを生成します。")
+    
+    # スプレッドシートからデータを取得
+    try:
+        ss = gc.open(ss_name)
+        db_sheet = ss.worksheet("過去データ蓄積")
+        data = db_sheet.get_all_values()
+    except Exception as e:
+        st.error(f"データの取得に失敗しました: {e}")
+        data = []
+
+    if len(data) > 1:
+        # 1行目をヘッダーとしてデータフレーム化
+        df_history = pd.DataFrame(data[1:], columns=data[0])
+        
+        # 「日付」列から「YYYY/MM」の月データだけを抽出してリスト化
+        df_history['年月'] = df_history['日付'].apply(lambda x: str(x)[:7] if len(str(x)) >= 7 else "")
+        available_months = sorted(list(set([m for m in df_history['年月'] if m])), reverse=True)
+        if not available_months: available_months = [datetime.now().strftime("%Y/%m")]
+        
+        # ユーザーが月を選択
+        target_month = st.selectbox("📅 集計する月を選択してください", available_months)
+        
+        # 選択された月のデータに絞り込み
+        df_month = df_history[df_history['年月'] == target_month].copy()
+        
+        # 🌟 自動集計ロジック：◎（本命）を打った馬だけを抽出
+        if '評価' in df_month.columns:
+            df_honmei = df_month[df_month['評価'] == '◎'].copy()
+            df_honmei['払戻金'] = pd.to_numeric(df_honmei['払戻金'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+            
+            # 1. 全レースの成績計算
+            total_races = len(df_honmei)
+            total_invest_all = total_races * 100 # 1レース100円計算
+            total_return_all = df_honmei['払戻金'].sum()
+            recovery_all = round((total_return_all / total_invest_all * 100), 1) if total_invest_all > 0 else 0.0
+            
+            # 2. 買いレースの成績計算（AI判定が「買い」のもの）
+            df_buy = df_honmei[df_honmei['AI判定'] == '買い'].copy()
+            buy_races = len(df_buy)
+            total_invest_buy = buy_races * 100
+            total_return_buy = df_buy['払戻金'].sum()
+            recovery_buy = round((total_return_buy / total_invest_buy * 100), 1) if total_invest_buy > 0 else 0.0
+            
+            st.success(f"✅ {target_month}のデータ（全{total_races}レース分）を自動集計しました！")
+        else:
+            st.warning("データフォーマットが古いため集計できません。")
+            total_races, recovery_all, buy_races, recovery_buy = 0, 0.0, 0, 0.0
+            
+    else:
+        st.warning("まだスプレッドシートに過去データが蓄積されていません。")
+        target_month = datetime.now().strftime("%Y/%m")
+        total_races, recovery_all, buy_races, recovery_buy = 0, 0.0, 0, 0.0
+
+    st.markdown("---")
+    
+    st.markdown("### 📊 自動計算された成績データ")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(f'<div class="kpi-card"><div class="kpi-title">① 全レース対象の ◎回収率</div><div class="kpi-value">{recovery_all}<span style="font-size:1.2rem;"> ％</span></div><div style="color:#94A3B8; font-size:0.8rem; margin-top:5px;">対象: {total_races}レース</div></div>', unsafe_allow_html=True)
+    with col2:
+        profit_color = "#10B981" if recovery_buy >= 100 else "#EF4444"
+        st.markdown(f'<div class="kpi-card"><div class="kpi-title">② 買いレース対象の ◎回収率</div><div class="kpi-value" style="color:{profit_color};">{recovery_buy}<span style="font-size:1.2rem;"> ％</span></div><div style="color:#94A3B8; font-size:0.8rem; margin-top:5px;">対象: {buy_races}レース</div></div>', unsafe_allow_html=True)
+
+    st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+    
+    st.markdown("### 🧠 AIの特徴量と気付き（ここは手動で補足）")
+    col3, col4 = st.columns(2)
+    with col3:
+        top_feature_1 = st.text_input("特徴量重要度 1位", value="実力順位(RL)")
+        top_feature_2 = st.text_input("特徴量重要度 2位", value="適正順位(CL)")
+        top_feature_3 = st.text_input("特徴量重要度 3位", value="単勝オッズ")
+    with col4:
+        human_insight = st.text_area("今月の気づき・気になる傾向（任意）", value="例：見送りレースで◎が勝つことが多い。荒れるレースの検知が苦手な気がする。")
+    
+    st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+    st.subheader("📋 コピー用プロンプト")
+    st.info("右上のコピーボタン（📋マーク）を押して、Gemini（チューナーGem）に貼り付けてください。成績は自動で埋め込まれています。")
+    
+    # 🌟 成績が自動で埋め込まれるプロンプト
+    tuning_prompt = f"""以下の月次データを基に、LightGBMモデルおよび期待値フィルターのチューニング案を提示してください。
+今回は、AIの純粋な予測力を測る「全レース成績」と、投資システムとしての精度を測る「買いレース成績」を分けて提出します。
+
+【直近の運用データ：{target_month}】
+■ 全レース成績（AIの基礎予測力）
+・対象全レース数：{total_races} レース
+・◎(本命)の理論上・単勝回収率：{recovery_all} ％
+
+■ 買いレース成績（投資フィルターの精度）
+・AIが「買い」と判定したレース数：{buy_races} レース
+・買いレースでの ◎(本命) 単勝回収率：{recovery_buy} ％
+
+【現在のAIが重視しているファクター（特徴量重要度トップ3）】
+1位：{top_feature_1}
+2位：{top_feature_2}
+3位：{top_feature_3}
+
+【人間の目から見た課題・気になる傾向】
+{human_insight}
+
+【指示】
+1. 「全レース成績」と「買いレース成績」の乖離から、現在のシステム（予測モデルの精度 vs 買いフィルターの適切さ）の健康状態を客観的に分析してください。
+2. ノイズになっているファクターの指摘、または追加すべき新しい特徴量のアイデアを提案してください。
+3. LightGBMのハイパーパラメータ調整案と、買い目決定ロジック（期待値の閾値変更など）の具体的なアクションプランを提示してください。
+"""
+
+    st.code(tuning_prompt, language="markdown")
