@@ -9,8 +9,90 @@ import requests
 import json
 import gspread
 import pandas as pd
-import altair as alt
 from datetime import datetime
+
+# ==========================================
+# 🎨 ページ設定（最初に記述する必要があります）
+# ==========================================
+st.set_page_config(page_title="Keiba AI Core", page_icon="♞", layout="wide", initial_sidebar_state="expanded")
+
+# ==========================================
+# 💅 カスタムCSS（1枚目の画像のデザインを完全再現）
+# ==========================================
+st.markdown("""
+<style>
+    /* アプリ全体の背景と文字色をダークモードに */
+    .stApp {
+        background-color: #0F172A;
+        color: #F8FAFC;
+    }
+
+    /* 🎯 サイドバー全体の設定（1枚目画像のダークネイビー色） */
+    [data-testid="stSidebar"] {
+        background-color: #171B2B !important;
+        border-right: 1px solid #2D3748;
+    }
+    
+    /* サイドバー内のテキストをデフォルト白に */
+    [data-testid="stSidebar"] * {
+        color: #CBD5E1;
+    }
+
+    /* 🎯 メニュー（ラジオボタン）のデザイン変更 */
+    /* デフォルトの丸いボタンを非表示にする */
+    [data-testid="stSidebar"] [role="radiogroup"] label div:first-child {
+        display: none;
+    }
+    
+    /* ボタン同士の間隔 */
+    [data-testid="stSidebar"] [role="radiogroup"] {
+        gap: 0.5rem;
+    }
+
+    /* メニュー項目の基本スタイル */
+    [data-testid="stSidebar"] [role="radiogroup"] label {
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 4px;
+        color: #94A3B8;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border: none;
+    }
+
+    /* マウスを乗せた時（ホバー）のスタイル */
+    [data-testid="stSidebar"] [role="radiogroup"] label:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+        color: #FFFFFF;
+    }
+
+    /* 🌟 選択中のメニューのスタイル（1枚目画像のインディゴ背景） */
+    [data-testid="stSidebar"] [role="radiogroup"] label[aria-checked="true"] {
+        background-color: #292E4F !important;
+    }
+    
+    /* 選択中のメニューの文字色（明るいインディゴブルー） */
+    [data-testid="stSidebar"] [role="radiogroup"] label[aria-checked="true"] p {
+        color: #818CF8 !important;
+        font-weight: 600;
+    }
+
+    /* 既存のKPIカード等のデザイン */
+    .kpi-card { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); }
+    .kpi-title { color: #94A3B8; font-size: 0.9rem; margin-bottom: 8px; }
+    .kpi-value { font-size: 2.2rem; font-weight: 700; margin: 0; color: #FFFFFF; }
+    .stButton>button { font-weight: 600; transition: all 0.3s ease; }
+    .main-header { font-size: 1.8rem; font-weight: 700; margin-bottom: 0; color: #FFFFFF; }
+    .sub-header { color: #94A3B8; font-size: 0.9rem; margin-bottom: 20px; }
+    .ticket-card { background-color: #1E293B; border-left: 4px solid #10B981; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
+    .streamlit-expanderHeader { font-size: 1.1rem; font-weight: 600; background-color: #1E293B; border-radius: 8px; color: #FFFFFF; }
+    
+    /* スプレッドシート（データフレーム）の文字色調整 */
+    [data-testid="stDataFrame"] {
+        background-color: #1E293B;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # ==========================================
 # 🔐 Googleスプレッドシート認証
@@ -385,33 +467,32 @@ def fetch_and_analyze_single_race(race_id, driver, analysis_sheet, progress_bar,
     }
 
 # ==========================================
-# 🎨 ページ設定とカスタムCSS
+# 📐 サイドバー構築（1枚目画像のUIを再現）
 # ==========================================
-st.set_page_config(page_title="Keiba AI Core", page_icon="🐴", layout="wide", initial_sidebar_state="expanded")
-
-st.markdown("""
-<style>
-    .kpi-card { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-    .kpi-title { color: #94A3B8; font-size: 0.9rem; margin-bottom: 8px; }
-    .kpi-value { font-size: 2.2rem; font-weight: 700; margin: 0; }
-    .stButton>button { font-weight: 600; transition: all 0.3s ease; }
-    .main-header { font-size: 1.8rem; font-weight: 700; margin-bottom: 0; }
-    .sub-header { color: #94A3B8; font-size: 0.9rem; margin-bottom: 20px; }
-    .ticket-card { background-color: #1E293B; border-left: 4px solid #10B981; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
-    .streamlit-expanderHeader { font-size: 1.1rem; font-weight: 600; background-color: #1E293B; border-radius: 8px; }
-</style>
-""", unsafe_allow_html=True)
-
 with st.sidebar:
-    st.markdown("<h2 style='color: white; margin-bottom: 30px;'>🐴 Keiba AI Core</h2>", unsafe_allow_html=True)
-    menu = st.radio("", ["ダッシュボード", "レース予測・自動実行", "🔧 AIチューニング（月次）"], label_visibility="collapsed")
-    st.markdown("<div style='margin-top: 50vh;'></div>", unsafe_allow_html=True)
+    # ヘッダー部分（紫のチェスナイト風アイコン＋タイトル）
     st.markdown("""
-    <div style='border-top: 1px solid #334155; padding-top: 20px; display: flex; align-items: center;'>
-        <div style='background-color: #8B5CF6; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; margin-right: 12px;'>U</div>
+    <div style='display: flex; align-items: center; margin-bottom: 2rem; margin-top: 10px;'>
+        <span style='color: #6366F1; font-size: 2.2rem; margin-right: 12px; line-height: 1;'>♞</span>
+        <span style='color: #FFFFFF; font-size: 1.6rem; font-weight: bold;'>Keiba AI Core</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 🌟 メニューに絵文字を追加して、1枚目のアイコンっぽさを出しています
+    menu = st.radio("", ["📊 ダッシュボード", "🚀 レース予測・自動実行", "🔧 AIチューニング（月次）"], label_visibility="collapsed")
+    
+    # 余白を追加してユーザー情報を一番下に押し下げる
+    st.markdown("<div style='margin-top: 55vh;'></div>", unsafe_allow_html=True)
+    
+    # フッター部分（紫のアイコン、User (Chromebook)、システム稼働中の表記）
+    st.markdown("""
+    <div style='border-top: 1px solid #2D3748; padding-top: 20px; display: flex; align-items: center;'>
+        <div style='background-color: #8B5CF6; color: white; width: 42px; height: 42px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.2rem; margin-right: 15px;'>U</div>
         <div>
-            <div style='font-weight: bold; font-size: 0.9rem;'>User (Cloud Hosted)</div>
-            <div style='color: #10B981; font-size: 0.75rem;'>● システム稼働中</div>
+            <div style='font-weight: 700; font-size: 1rem; color: #FFFFFF;'>User (Chromebook)</div>
+            <div style='color: #94A3B8; font-size: 0.85rem; display: flex; align-items: center; margin-top: 3px;'>
+                システム稼働中 <span style='color: #10B981; font-size: 1rem; margin-left: 6px; line-height: 1;'>●</span>
+            </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -419,7 +500,7 @@ with st.sidebar:
 # ==========================================
 # 📊 メイン画面：ダッシュボード
 # ==========================================
-if menu == "ダッシュボード":
+if menu == "📊 ダッシュボード":
     col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
         st.markdown("<p class='main-header'>回収率・期待値ダッシュボード</p>", unsafe_allow_html=True)
@@ -483,7 +564,7 @@ if menu == "ダッシュボード":
 # ==========================================
 # 🔍 メイン画面：レース予測・自動実行
 # ==========================================
-elif menu == "レース予測・自動実行":
+elif menu == "🚀 レース予測・自動実行":
     st.markdown("<p class='main-header'>レース予測 (ステップ3：全レース一括スキャン)</p>", unsafe_allow_html=True)
     
     tab1, tab2 = st.tabs(["🚀 指定日付の全レース一括解析", "🎯 1レース指定解析"])
