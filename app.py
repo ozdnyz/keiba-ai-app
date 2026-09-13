@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import re
 from datetime import datetime
 import pandas as pd
@@ -7,31 +8,51 @@ import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 
-# ページ設定
 st.set_page_config(page_title="競馬AI 投資支援システム", page_icon="🏇", layout="wide")
 
-# key.json のパス解決（実行ディレクトリに依存しない設定）
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 KEY_FILE = os.path.join(BASE_DIR, "key.json")
-if not os.path.exists(KEY_FILE) and os.path.exists("key.json"):
-    KEY_FILE = "key.json"
-
 SS_NAME = "競馬AIシステム_Core"
 
-# 馬連想定倍率の計算関数
 def calc_umaren_odds(o1, o2):
     if o1 <= 0 or o2 <= 0:
         return 1.5
     raw = (o1 * o2) ** 0.72 * 0.95
     return max(1.5, round(raw, 1))
 
-# スプレッドシート接続関数
+# Secretsのあらゆる書き方を自動判別して接続する関数
 def get_gspread_client():
-    if not os.path.exists(KEY_FILE):
-        raise FileNotFoundError(f"'{KEY_FILE}' が見つかりません。スクリプトと同じフォルダに配置してください。")
     scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
-    creds = Credentials.from_service_account_file(KEY_FILE, scopes=scopes)
-    return gspread.authorize(creds)
+    
+    # 1. Streamlit Secrets の自動探索
+    if hasattr(st, "secrets") and len(st.secrets) > 0:
+        # パターンA: secrets 直下に private_key がある場合
+        if "private_key" in st.secrets:
+            return gspread.authorize(Credentials.from_service_account_info(dict(st.secrets), scopes=scopes))
+        
+        # パターンB: secrets の中の各項目を走査
+        for key, val in st.secrets.items():
+            if isinstance(val, (dict, st.secrets.__class__)) and "private_key" in val:
+                return gspread.authorize(Credentials.from_service_account_info(dict(val), scopes=scopes))
+            if isinstance(val, str) and "private_key" in val:
+                try:
+                    key_dict = json.loads(val)
+                    return gspread.authorize(Credentials.from_service_account_info(key_dict, scopes=scopes))
+                except Exception:
+                    pass
+        
+        # パターンC: connections.gsheets 形式
+        if "connections" in st.secrets and "gsheets" in st.secrets["connections"]:
+            g_sec = st.secrets["connections"]["gsheets"]
+            return gspread.authorize(Credentials.from_service_account_info(dict(g_sec), scopes=scopes))
+
+    # 2. ローカル key.json
+    if os.path.exists(KEY_FILE):
+        return gspread.authorize(Credentials.from_service_account_file(KEY_FILE, scopes=scopes))
+    elif os.path.exists("key.json"):
+        return gspread.authorize(Credentials.from_service_account_file("key.json", scopes=scopes))
+        
+    raise FileNotFoundError("認証キーが見つかりません。Secretsの設定内容を確認してください。")
 
 # UIヘッダー
 st.title("🏇 競馬AI 投資支援システム")
@@ -48,7 +69,6 @@ if exec_btn:
             gc = get_gspread_client()
             ss = gc.open(SS_NAME)
 
-            # データシートの読み込み
             all_dfs = []
             for ws in ss.worksheets():
                 if ws.title in ["本日勝負レース", "AI予想配信"]:
@@ -75,14 +95,13 @@ if exec_btn:
             df['レース名'] = df.get('レース名', '').astype(str)
             df['日付'] = df.get('日付', '').astype(str).str.strip()
 
-            # 距離抽出
             dist_col = next((c for c in df.columns if '距離' in c), None)
             if dist_col:
                 df['dist_num'] = pd.to_numeric(df[dist_col].astype(str).str.extract(r'(\d+)')[0], errors='coerce').fillna(0)
             else:
                 df['dist_num'] = pd.to_numeric(df['レース名'].str.extract(r'(\d{3,4})m?')[0], errors='coerce').fillna(0)
 
-            # 本日の日付判定（本日データがなければ最新開催日を採用）
+            # 日付判定（本日データ、なければ最新日付）
             now = datetime.now()
             today_formats = [now.strftime("%Y/%m/%d"), f"{now.year}/{now.month}/{now.day}", now.strftime("%Y-%m-%d")]
             df_today = df[df['日付'].isin(today_formats)].copy()
@@ -95,15 +114,13 @@ if exec_btn:
                 dates = sorted([d for d in df['日付'].unique() if d != "" and d != "不明"])
                 target_date = dates[-1] if dates else "最新"
                 day_df = df[df['日付'] == target_date].copy()
-                st.warning(f"⚠️ 本日の出馬表が未投入のため、直近開催日【 {target_date} 】のデータを分析対象としています。")
+                st.warning(f"⚠️ 直近開催日【 {target_date} 】のデータを分析対象としています。")
 
             day_df['race_key'] = day_df['会場'] + "_" + day_df['レース名']
 
-            # 主要4場判定
             major_tracks = ["東京", "中山", "阪神", "京都"]
             day_df['is_major'] = day_df['会場'].apply(lambda x: any(m in x for m in major_tracks))
 
-            # 1番人気オッズ特定
             race_pop1 = day_df[day_df['人気'] == 1].groupby('race_key')['単勝オッズ'].min().to_dict()
             day_df['pop1_odds'] = day_df['race_key'].map(race_pop1).fillna(99.0)
 
@@ -119,7 +136,6 @@ if exec_btn:
                 is_maj = grp.iloc[0]['is_major']
                 p1_odds = grp.iloc[0]['pop1_odds']
 
-                # フィルター判定
                 if not is_maj:
                     sheet_skip_rows.append([target_date, venue, r_name, "見送り", "主要4場外（ローカル場）"])
                     continue
@@ -144,7 +160,6 @@ if exec_btn:
                 h_row = h.iloc[0]
                 h_pop = int(h_row['人気'])
 
-                # 軸馬条件（1〜2番人気限定）
                 if h_pop not in [1, 2]:
                     sheet_skip_rows.append([target_date, venue, r_name, "見送り", f"◎が{h_pop}番人気（鉄板軸外）"])
                     continue
@@ -175,7 +190,7 @@ if exec_btn:
                 sheet_target_rows.append([target_date, venue, r_name, f"{surface}{dist}m", f"◎ [{h_row['馬番']}] {h_row['馬名']}", "馬連", f"{h_row['馬番']} - {t_row['馬番']}", f"◯ [{t_row['馬番']}] {t_row['馬名']}", f"約 {u_t} 倍", 100])
                 sheet_target_rows.append([target_date, venue, r_name, f"{surface}{dist}m", f"◎ [{h_row['馬番']}] {h_row['馬名']}", "馬連", f"{h_row['馬番']} - {d1_row['馬番']}", f"△1 [{d1_row['馬番']}] {d1_row['馬名']}", f"約 {u_d} 倍", 100])
 
-            # スプレッドシート自動書き込み
+            # スプレッドシート自動保存
             try:
                 out_ws = ss.worksheet("本日勝負レース")
                 out_ws.clear()
@@ -188,7 +203,6 @@ if exec_btn:
 
             st.success(f"✅ 分析完了！ 対象日：{target_date} ｜ スプレッドシート [本日勝負レース] に自動保存しました。")
 
-            # 画面カード表示
             st.subheader(f"🎯 厳選勝負レース：全 {len(target_races)} レース（計 {len(target_races)*2} 点）")
             st.metric(label="総投資額（1点100円均等買い）", value=f"{len(target_races) * 200:,} 円")
 
