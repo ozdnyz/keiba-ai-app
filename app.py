@@ -14,20 +14,22 @@ st.set_page_config(
     page_title="Keiba AI Core",
     page_icon="🐴",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"  # スマホ閲覧時は初期状態でサイドバーを閉じる
 )
 
 # ==========================================
-# 🎨 カスタムCSS（白飛び完全防御・ダークテーマ強制）
+# 🎨 カスタムCSS（PC / スマホ両対応レスポンシブデザイン）
 # ==========================================
 st.markdown("""
 <style>
+    /* 全体背景とフォント */
     .stApp {
         background-color: #0B0F19 !important;
         color: #F3F4F6 !important;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     
+    /* サイドバー */
     [data-testid="stSidebar"] {
         background-color: #0E1322 !important;
         border-right: 1px solid #1E2640 !important;
@@ -43,9 +45,10 @@ st.markdown("""
         padding: 0.5rem 0.5rem 1.5rem 0.5rem;
     }
 
+    /* メニューのラジオボタン調整 */
     [data-testid="stSidebar"] div[role="radiogroup"] > label {
         background-color: transparent !important;
-        padding: 8px 12px !important;
+        padding: 10px 12px !important;
         border-radius: 8px !important;
         margin-bottom: 4px !important;
         cursor: pointer !important;
@@ -75,13 +78,8 @@ st.markdown("""
     [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) p {
         color: #FFFFFF !important;
     }
-    [data-testid="stSidebar"] div[role="radiogroup"] > label:hover {
-        background-color: #161C2E !important;
-    }
-    [data-testid="stSidebar"] div[role="radiogroup"] > label:hover p {
-        color: #E2E8F0 !important;
-    }
 
+    /* エクスパンダーのダーク化 */
     [data-testid="stExpander"] details {
         background-color: #141A29 !important;
         border: 1px solid #1E273D !important;
@@ -92,19 +90,17 @@ st.markdown("""
         padding: 12px 16px !important;
         border-radius: 8px !important;
     }
-    [data-testid="stExpander"] summary:hover {
-        background-color: #272C46 !important;
-    }
     [data-testid="stExpander"] summary p {
         color: #F3F4F6 !important;
         font-weight: 600 !important;
-        font-size: 1.05rem !important;
+        font-size: 1rem !important;
     }
     [data-testid="stExpander"] div[data-testid="stExpanderDetails"] {
         background-color: #0B0F19 !important;
-        padding: 16px !important;
+        padding: 12px 8px !important;
     }
 
+    /* システム稼働中バッジ（PC用デフォルト） */
     .sidebar-user {
         position: fixed !important;
         bottom: 24px !important;
@@ -147,19 +143,21 @@ st.markdown("""
         gap: 4px;
     }
 
+    /* メインヘッダー */
     .main-title {
         font-size: 1.85rem;
         font-weight: 700;
         color: #FFFFFF !important;
         margin-bottom: 4px;
-        line-height: 1.2;
+        line-height: 1.25;
     }
     .last-update {
         font-size: 0.85rem;
         color: #94A3B8;
-        margin-bottom: 1.2rem;
+        margin-bottom: 1rem;
     }
 
+    /* ボタン共通 */
     button[kind="secondary"], 
     button[kind="primary"],
     [data-testid="stButton"] button {
@@ -167,27 +165,27 @@ st.markdown("""
         color: #E2E8F0 !important;
         border: 1px solid #2B354F !important;
         border-radius: 8px !important;
-        padding: 0.55rem 1.1rem !important;
+        padding: 0.55rem 1rem !important;
         font-weight: 600 !important;
+        min-height: 42px !important;
     }
-    [data-testid="stButton"] button p,
-    [data-testid="stButton"] button span {
+    [data-testid="stButton"] button p {
         color: #E2E8F0 !important;
     }
     [data-testid="stButton"] button:hover {
         background-color: #1E273D !important;
         border-color: #6366F1 !important;
     }
-    [data-testid="stButton"] button:hover p,
-    [data-testid="stButton"] button:hover span {
+    [data-testid="stButton"] button:hover p {
         color: #FFFFFF !important;
     }
 
+    /* フォーム・入力枠 */
     [data-testid="stForm"] {
         background-color: #141A29 !important;
         border: 1px solid #1E273D !important;
         border-radius: 12px !important;
-        padding: 1.5rem !important;
+        padding: 1.2rem !important;
     }
     [data-testid="stForm"] label,
     [data-testid="stWidgetLabel"] label,
@@ -205,17 +203,16 @@ st.markdown("""
         border-radius: 8px !important;
         font-size: 1rem !important;
         font-weight: 600 !important;
+        min-height: 44px !important;
     }
     [data-testid="stNumberInput"] button {
         background-color: #1E273D !important;
         color: #CBD5E1 !important;
         border: 1px solid #2B354F !important;
-    }
-    [data-testid="stNumberInput"] button:hover {
-        background-color: #273352 !important;
-        color: #FFFFFF !important;
+        min-height: 44px !important;
     }
 
+    /* 保存ボタン（パープル・太字） */
     [data-testid="stFormSubmitButton"] button {
         background-color: #4F46E5 !important;
         color: #FFFFFF !important;
@@ -223,70 +220,63 @@ st.markdown("""
         border-radius: 8px !important;
         padding: 0.65rem 1.6rem !important;
         font-weight: 700 !important;
+        min-height: 46px !important;
         box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35) !important;
+        width: 100% !important;
     }
-    [data-testid="stFormSubmitButton"] button p,
-    [data-testid="stFormSubmitButton"] button span {
+    [data-testid="stFormSubmitButton"] button p {
         color: #FFFFFF !important;
         font-weight: 700 !important;
+        font-size: 1rem !important;
     }
     [data-testid="stFormSubmitButton"] button:hover {
         background-color: #4338CA !important;
-        border-color: #818CF8 !important;
     }
 
+    /* KPIカード */
     .kpi-card {
         background: #141A29;
         border: 1px solid #1E273D;
-        border-radius: 16px;
-        padding: 1.3rem 1.4rem;
+        border-radius: 14px;
+        padding: 1.1rem 1.2rem;
         position: relative;
         overflow: hidden;
-        min-height: 125px;
-    }
-    .kpi-card::after {
-        content: "";
-        position: absolute;
-        top: -30px;
-        right: -30px;
-        width: 80px;
-        height: 80px;
-        background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(20, 26, 41, 0) 70%);
-        border-radius: 50%;
+        margin-bottom: 0.6rem;
     }
     .kpi-title {
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         color: #94A3B8;
         font-weight: 500;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.3rem;
     }
     .kpi-value-row {
         display: flex;
         align-items: baseline;
-        gap: 8px;
+        gap: 6px;
     }
     .kpi-value {
-        font-size: 1.85rem;
+        font-size: 1.8rem;
         font-weight: 700;
         color: #FFFFFF;
         letter-spacing: -0.5px;
     }
     .kpi-sub {
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         color: #94A3B8;
         font-weight: 500;
     }
     .kpi-diff-green {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         color: #10B981;
         font-weight: 600;
     }
 
+    /* レースカードスタイル */
     .race-card {
         background: #141A29;
         border: 1px solid #1E273D;
         border-radius: 12px;
-        padding: 1.2rem;
+        padding: 1.1rem;
         margin-bottom: 1rem;
     }
     .race-header {
@@ -296,45 +286,98 @@ st.markdown("""
         border-bottom: 1px solid #1E273D;
         padding-bottom: 0.5rem;
         margin-bottom: 0.8rem;
+        flex-wrap: wrap;
+        gap: 6px;
     }
     .race-name {
-        font-size: 1.1rem;
+        font-size: 1.05rem;
         font-weight: 700;
         color: #FFFFFF;
     }
     .race-badge {
         background-color: #1E2238;
         color: #6366F1;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 600;
-        padding: 3px 8px;
+        padding: 2px 8px;
         border-radius: 4px;
         border: 1px solid #6366F1;
     }
 
-    /* やることリスト用ステップスタイル */
+    /* やることリスト用 */
     .step-box {
         background: #141A29;
         border: 1px solid #1E273D;
         border-radius: 10px;
-        padding: 1rem 1.2rem;
-        margin-bottom: 0.8rem;
+        padding: 0.9rem 1rem;
+        margin-bottom: 0.7rem;
     }
     .step-header {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         font-weight: 700;
         color: #FFFFFF;
-        margin-bottom: 0.4rem;
+        margin-bottom: 0.3rem;
+        font-size: 0.95rem;
     }
     .step-badge {
         background: #4F46E5;
         color: white;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 700;
-        padding: 2px 8px;
+        padding: 2px 6px;
         border-radius: 999px;
+    }
+
+    /* ==========================================
+       📱 スマホ専用レスポンシブ設定 (幅768px以下)
+       ========================================== */
+    @media screen and (max-width: 768px) {
+        /* タイトルサイズ縮小 */
+        .main-title {
+            font-size: 1.35rem !important;
+            margin-bottom: 2px !important;
+        }
+        .last-update {
+            font-size: 0.75rem !important;
+            margin-bottom: 0.8rem !important;
+        }
+
+        /* KPIカードのスマホ最適化 */
+        .kpi-card {
+            padding: 0.85rem 1rem !important;
+            margin-bottom: 0.5rem !important;
+            min-height: auto !important;
+        }
+        .kpi-value {
+            font-size: 1.45rem !important;
+        }
+        .kpi-title {
+            font-size: 0.75rem !important;
+        }
+
+        /* スマホ時はバッジの固定を解除しサイドバー最下部に収める */
+        .sidebar-user {
+            position: relative !important;
+            bottom: auto !important;
+            left: auto !important;
+            width: 100% !important;
+            margin-top: 2rem !important;
+        }
+
+        /* フォームのパディング縮小 */
+        [data-testid="stForm"] {
+            padding: 1rem 0.8rem !important;
+        }
+
+        /* 出馬表テーブルの文字サイズと余白をスマホ最適化 */
+        table {
+            font-size: 0.85rem !important;
+        }
+        th, td {
+            padding: 8px 4px !important;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -439,7 +482,7 @@ with st.sidebar:
 # 🚀 画面 1: 📊 ダッシュボード
 # ==========================================
 if menu == "📊 ダッシュボード":
-    col_h_left, col_h_right = st.columns([8, 2])
+    col_h_left, col_h_right = st.columns([7, 3])
     now_str = datetime.now().strftime("%Y年%m月%d日 %H:%M")
 
     with col_h_left:
@@ -452,8 +495,8 @@ if menu == "📊 ダッシュボード":
         if st.button("🔄 データ更新", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
-    st.write("")
 
+    # 実収支データからKPIを計算
     ai_roi, usr_roi = 0.0, 0.0
     if df_daily_log is not None and not df_daily_log.empty and 'AI投資額' in df_daily_log.columns:
         df_daily_calc = df_daily_log.copy()
@@ -487,7 +530,8 @@ if menu == "📊 ダッシュボード":
     
     today_investment = today_target_count * 200
 
-    c1, c2, c3, c4 = st.columns(4)
+    # スマホでも綺麗に並ぶよう2列×2行のグリッド配置
+    c1, c2 = st.columns(2)
     with c1:
         ai_disp = f"{ai_roi:.1f}" if ai_roi > 0 else "128.7"
         sub_text = "実測累計" if ai_roi > 0 else "5年検証"
@@ -496,8 +540,8 @@ if menu == "📊 ダッシュボード":
             <div class="kpi-title">AI理論回収率 ({sub_text})</div>
             <div class="kpi-value-row">
                 <span class="kpi-value">{ai_disp}</span><span class="kpi-sub">%</span>
-                <span class="kpi-diff-green">● 1点100円</span>
             </div>
+            <span class="kpi-diff-green">● 1点100円</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -508,17 +552,18 @@ if menu == "📊 ダッシュボード":
             <div class="kpi-title">あなたの実回収率 (全期間)</div>
             <div class="kpi-value-row">
                 <span class="kpi-value">{usr_disp}</span><span class="kpi-sub">%</span>
-                <span class="kpi-diff-green">● 実戦成績</span>
             </div>
+            <span class="kpi-diff-green">● 実戦成績</span>
         </div>
         """, unsafe_allow_html=True)
 
+    c3, c4 = st.columns(2)
     with c3:
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-title">最新日 勝負レース数</div>
             <div class="kpi-value-row">
-                <span class="kpi-value">{today_target_count}</span><span class="kpi-sub">R / {today_race_count}R中</span>
+                <span class="kpi-value">{today_target_count}</span><span class="kpi-sub">R / {today_race_count}R</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -535,10 +580,12 @@ if menu == "📊 ダッシュボード":
 
     st.write("")
 
-    # 回収率推移グラフ
-    col_chart_title, col_chart_select = st.columns([6, 3])
+    # ==========================================
+    # 📈 回収率推移グラフ（スマホレスポンシブ）
+    # ==========================================
+    col_chart_title, col_chart_select = st.columns([6, 4])
     with col_chart_title:
-        st.markdown('<div style="font-size:1.15rem; font-weight:700; color:#FFFFFF;">回収率推移（AI理論値 vs あなたの実績）</div>', unsafe_allow_html=True)
+        st.markdown('<div style="font-size:1.1rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">回収率推移</div>', unsafe_allow_html=True)
     with col_chart_select:
         chart_mode = st.selectbox(
             "期間・単位",
@@ -608,53 +655,53 @@ if menu == "📊 ダッシュボード":
 
             fig.add_trace(go.Scatter(
                 x=x_vals, y=ai_vals,
-                name="AI理論回収率 (1点100円)",
+                name="AI理論 (100円)",
                 mode="lines+markers",
-                line=dict(color="#6366F1", width=3, shape="spline"),
-                marker=dict(size=7, color="#6366F1", line=dict(color="#FFFFFF", width=1.5)),
-                hovertemplate="%{x}<br>AI回収率: %{y:.1f}%<extra></extra>"
+                line=dict(color="#6366F1", width=2.5, shape="spline"),
+                marker=dict(size=6, color="#6366F1"),
+                hovertemplate="%{x}<br>AI: %{y:.1f}%<extra></extra>"
             ))
 
             fig.add_trace(go.Scatter(
                 x=x_vals, y=usr_vals,
-                name="あなたの実回収率",
+                name="あなたの実戦",
                 mode="lines+markers",
-                line=dict(color="#10B981", width=3, shape="spline"),
-                marker=dict(size=7, color="#10B981", line=dict(color="#FFFFFF", width=1.5)),
-                hovertemplate="%{x}<br>実回収率: %{y:.1f}%<extra></extra>"
+                line=dict(color="#10B981", width=2.5, shape="spline"),
+                marker=dict(size=6, color="#10B981"),
+                hovertemplate="%{x}<br>実戦: %{y:.1f}%<extra></extra>"
             ))
     else:
         dates = [f"9/{i}" for i in range(5, 15)]
         ai_roi_demo = [108.0, 109.5, 115.0, 111.0, 114.5, 120.5, 118.0, 122.5, 124.2, 128.7]
         fig.add_trace(go.Scatter(
             x=dates, y=ai_roi_demo,
-            name="AI判定通り全買い (検証モデル)",
+            name="AI検証モデル",
             mode="lines+markers",
-            line=dict(color="#6366F1", width=3, shape="spline"),
-            marker=dict(size=7, color="#6366F1", line=dict(color="#FFFFFF", width=1.5))
+            line=dict(color="#6366F1", width=2.5, shape="spline"),
+            marker=dict(size=6, color="#6366F1")
         ))
 
     fig.add_hline(
         y=100,
         line_dash="dash",
         line_color="#475569",
-        annotation_text="100% 損益分岐点",
+        annotation_text="100%",
         annotation_position="bottom right",
         annotation_font_color="#94A3B8"
     )
 
     fig.update_layout(
-        height=340,
-        margin=dict(l=10, r=10, t=25, b=10),
+        height=300,
+        margin=dict(l=5, r=5, t=15, b=10),
         paper_bgcolor="#141A29",
         plot_bgcolor="#141A29",
-        font=dict(color="#94A3B8", size=12),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=12, color="#CBD5E1")),
+        font=dict(color="#94A3B8", size=11),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=11, color="#CBD5E1")),
         xaxis=dict(showgrid=True, gridcolor="#1E273D", zeroline=False),
         yaxis=dict(showgrid=True, gridcolor="#1E273D", zeroline=False, ticksuffix="%"),
         hovermode="x unified"
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
 # ==========================================
 # 🎯 画面 2: 厳選勝負レース
@@ -687,18 +734,18 @@ elif menu == "🎯 厳選勝負レース":
                 with c_bet1:
                     row1 = sub_df.iloc[0]
                     st.markdown(f"""
-                    <div style="background:#1B2338; padding:10px 14px; border-radius:8px; border-left:3px solid #3B82F6;">
+                    <div style="background:#1B2338; padding:10px 12px; border-radius:8px; border-left:3px solid #3B82F6; margin-bottom:6px;">
                         <span style="color:#94A3B8; font-size:0.8rem;">点① 本線・抑え</span><br>
-                        <b style="font-size:1.1rem; color:#FFFFFF;">馬連 {row1['買い目']}</b><br>
+                        <b style="font-size:1.05rem; color:#FFFFFF;">馬連 {row1['買い目']}</b><br>
                         <span style="font-size:0.85rem; color:#CBD5E1;">相手: {row1['相手馬']} ｜ 想定: {row1['想定オッズ']}</span>
                     </div>
                     """, unsafe_allow_html=True)
                 with c_bet2:
                     row2 = sub_df.iloc[1]
                     st.markdown(f"""
-                    <div style="background:#1B2338; padding:10px 14px; border-radius:8px; border-left:3px solid #10B981;">
+                    <div style="background:#1B2338; padding:10px 12px; border-radius:8px; border-left:3px solid #10B981; margin-bottom:6px;">
                         <span style="color:#94A3B8; font-size:0.8rem;">点② 利益の核（真の△1）</span><br>
-                        <b style="font-size:1.1rem; color:#FFFFFF;">馬連 {row2['買い目']}</b><br>
+                        <b style="font-size:1.05rem; color:#FFFFFF;">馬連 {row2['買い目']}</b><br>
                         <span style="font-size:0.85rem; color:#CBD5E1;">相手: {row2['相手馬']} ｜ 想定: {row2['想定オッズ']}</span>
                     </div>
                     """, unsafe_allow_html=True)
@@ -707,7 +754,7 @@ elif menu == "🎯 厳選勝負レース":
         st.info("スプレッドシートに最新の勝負レースデータがありません。")
 
 # ==========================================
-# 🏇 画面 3: 全レース出馬表（HTMLカスタム描画版）
+# 🏇 画面 3: 全レース出馬表（スマホ慣性スクロール版）
 # ==========================================
 elif menu == "🏇 全レース出馬表":
     st.markdown('<div class="main-title">全レース出馬表 ＆ AI評価印</div>', unsafe_allow_html=True)
@@ -744,13 +791,13 @@ elif menu == "🏇 全レース出馬表":
                         display_df = display_df.sort_values('馬番')
                         
                         html_table = """
-                        <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #1E273D;">
-                        <table style="width:100%; border-collapse: collapse; text-align: center; color: #F3F4F6; font-size: 0.95rem; background-color: #141A29;">
+                        <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; border: 1px solid #1E273D;">
+                        <table style="width:100%; border-collapse: collapse; text-align: center; color: #F3F4F6; background-color: #141A29; min-width: 520px;">
                             <thead>
                                 <tr style="background-color: #0E1322; color: #94A3B8; border-bottom: 2px solid #1E273D;">
                         """
                         for col in actual_cols:
-                            html_table += f"<th style='padding: 12px 8px; font-weight: 600;'>{col}</th>"
+                            html_table += f"<th style='padding: 10px 6px; font-weight: 600; white-space: nowrap;'>{col}</th>"
                         html_table += "</tr></thead><tbody>"
                         
                         for _, row in display_df.iterrows():
@@ -774,7 +821,8 @@ elif menu == "🏇 全レース出馬表":
                                     val = "-"
                                 
                                 align = "left" if col == "馬名" else "center"
-                                html_table += f"<td style='padding: 10px 8px; text-align: {align};'>{val}</td>"
+                                nowrap = "white-space: nowrap;" if col != "馬名" else ""
+                                html_table += f"<td style='padding: 8px 6px; text-align: {align}; {nowrap}'>{val}</td>"
                             html_table += "</tr>"
                         html_table += "</tbody></table></div>"
                         
@@ -783,19 +831,19 @@ elif menu == "🏇 全レース出馬表":
         st.info("スプレッドシートに最新の全頭データがありません。")
 
 # ==========================================
-# 💰 画面 4: 収支入力・管理（視認性向上版）
+# 💰 画面 4: 収支入力・管理（スマホタップ対応）
 # ==========================================
 elif menu == "💰 収支入力・管理":
     st.markdown('<div class="main-title">日次実収支の記録</div>', unsafe_allow_html=True)
     st.markdown('<div class="last-update">一日の終わりに、今日の総購入額と総払戻額を入力して保存してください</div>', unsafe_allow_html=True)
 
     with st.form("shushi_form"):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            target_date = st.date_input("🗓️ 競馬開催日", datetime.now())
-        with col2:
+        target_date = st.date_input("🗓️ 競馬開催日", datetime.now())
+        
+        c_in1, c_in2 = st.columns(2)
+        with c_in1:
             usr_inv = st.number_input("💸 今日の総購入額 (円)", min_value=0, value=0, step=100)
-        with col3:
+        with c_in2:
             usr_ret = st.number_input("💰 今日の総払戻額 (円)", min_value=0, value=0, step=100)
         
         st.write("")
@@ -835,116 +883,92 @@ elif menu == "💰 収支入力・管理":
                 st.error("🚨 スプレッドシートの認証に失敗しました。")
 
 # ==========================================
-# 💻 画面 5: ターミナル操作マニュアル（★やることリスト＆手動回収追加）
+# 💻 画面 5: ターミナル操作マニュアル
 # ==========================================
 elif menu == "💻 ターミナル操作マニュアル":
-    st.markdown('<div class="main-title">Chromebook ターミナル操作マニュアル</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-title">ターミナル操作マニュアル</div>', unsafe_allow_html=True)
     st.markdown('<div class="last-update">各枠右上のコピーボタンを押してターミナルに貼り付けてください</div>', unsafe_allow_html=True)
 
-    # 🌟 競馬終了後のやることリスト
     st.markdown("""
-    <div style="background:#1B2238; border:1px solid #6366F1; border-radius:12px; padding:1.2rem; margin-bottom:1.8rem;">
-        <h4 style="color:#FFFFFF; margin-top:0; display:flex; align-items:center; gap:8px;">
-            <span>🏁</span> 週末競馬終了後のやることリスト（3ステップ）
+    <div style="background:#1B2238; border:1px solid #6366F1; border-radius:12px; padding:1.1rem; margin-bottom:1.5rem;">
+        <h4 style="color:#FFFFFF; margin-top:0; display:flex; align-items:center; gap:8px; font-size:1.1rem;">
+            <span>🏁</span> 週末競馬終了後のやることリスト
         </h4>
         <div class="step-box">
             <div class="step-header">
                 <span class="step-badge">STEP 1</span> 結果回収の確認（または手動実行）
             </div>
-            <div style="font-size:0.9rem; color:#CBD5E1;">
-                Chromebookを開いておりタイマーが動いていれば自動完了しています。<br>
-                <b>「Chromebookを閉じていた場合」や「急いで今すぐ反映したい場合」</b>は、下記の <b>3. 手動結果回収コマンド</b> を実行してください。
+            <div style="font-size:0.85rem; color:#CBD5E1;">
+                Chromebookを開いていれば自動回収完了。閉じていた場合は下記 <b>3. 手動結果回収コマンド</b> を実行してください。
             </div>
         </div>
         <div class="step-box">
             <div class="step-header">
                 <span class="step-badge">STEP 2</span> あなたの実収支を入力
             </div>
-            <div style="font-size:0.9rem; color:#CBD5E1;">
-                左メニューの <b>「💰 収支入力・管理」</b> を開き、即PATなどの画面を見ながら「今日の総購入額」と「総払戻額」を入力して「保存」を押します。
+            <div style="font-size:0.85rem; color:#CBD5E1;">
+                左メニュー <b>「💰 収支入力・管理」</b> から総購入額と総払戻額を入力して保存。
             </div>
         </div>
         <div class="step-box" style="margin-bottom:0;">
             <div class="step-header">
                 <span class="step-badge">STEP 3</span> ダッシュボードで成果確認
             </div>
-            <div style="font-size:0.9rem; color:#CBD5E1;">
-                左メニューの <b>「📊 ダッシュボード」</b> を開き、右上の「🔄 データ更新」をクリック。AI理論回収率とあなたの実回収率グラフをチェック！
+            <div style="font-size:0.85rem; color:#CBD5E1;">
+                <b>「📊 ダッシュボード」</b> で「🔄 データ更新」を押し、グラフをチェック！
             </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # 1. 朝のリアルタイム予想実行
+    # 1. 朝の予想
     st.markdown("""
-    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
-        <h4 style="color:#FFFFFF; margin-top:0;">⚡ 1. 本日のリアルタイム予想実行（朝の手動実行）</h4>
-        <p style="color:#94A3B8; font-size:0.9rem;">
-            当日朝に手動で全レース巡回と黄金条件判定を行いたい場合に実行します。
-        </p>
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">⚡ 1. 朝の予想手動実行（全レース巡回）</h4>
     """, unsafe_allow_html=True)
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 run.py", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 2. 1レースピンポイント分析
+    # 2. 1レース分析
     st.markdown("""
-    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
-        <h4 style="color:#FFFFFF; margin-top:0;">🎯 2. 【1レースピンポイント分析】URL不要・会場と数字だけで分析</h4>
-        <p style="color:#94A3B8; font-size:0.9rem;">
-            ダート・短距離・重賞など、気になるレースを15秒で即座にAI診断します。
-        </p>
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🎯 2. 【1レースピンポイント分析】URL不要</h4>
     """, unsafe_allow_html=True)
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 check.py 中山 11", language="bash")
-    st.caption("※「中山 11」の部分を「阪神 10」や「中京 11」のように自由に変えて実行できます。")
+    st.caption("※「中山 11」を「阪神 10」などに変更可能")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 3. 🌟 手動結果回収コマンド（新規追加）
+    # 3. 手動結果回収
     st.markdown("""
-    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
-        <h4 style="color:#FFFFFF; margin-top:0;">🏁 3. 【手動結果回収】Chromebookを開いていなかった時の回収</h4>
-        <p style="color:#94A3B8; font-size:0.9rem;">
-            <b>当日夜に手動実行する場合</b>（今日の全レース結果を回収して日次収支シートを即更新）:
-        </p>
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🏁 3. 【手動結果回収】Chromebookを開いていなかった時</h4>
+        <p style="color:#94A3B8; font-size:0.85rem;">当日夜に実行する場合:</p>
     """, unsafe_allow_html=True)
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 result.py", language="bash")
-    st.markdown("""
-        <p style="color:#94A3B8; font-size:0.9rem; margin-top:12px;">
-            <b>過去日付（昨日や先週など）を指定して遡り回収する場合</b>:
-        </p>
-    """, unsafe_allow_html=True)
+    st.markdown('<p style="color:#94A3B8; font-size:0.85rem; margin-top:8px;">過去日を指定して遡り回収する場合:</p>', unsafe_allow_html=True)
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 result.py 20260913", language="bash")
-    st.caption("※末尾の「20260913」を回収したい日付（YYYYMMDD）に変更してください。")
     st.markdown("</div>", unsafe_allow_html=True)
 
     # 4. 過去日テスト
     st.markdown("""
-    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
-        <h4 style="color:#FFFFFF; margin-top:0;">📅 4. 過去日付の予想シミュレーション実行</h4>
-        <p style="color:#94A3B8; font-size:0.9rem;">
-            過去の特定日や2日間の検証を行う場合、末尾に半角スペース区切りで日付を指定して実行します。
-        </p>
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">📅 4. 過去日付の予想シミュレーション</h4>
     """, unsafe_allow_html=True)
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 run.py 20260912 20260913", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
 
     # 5. タイマーログ確認
     st.markdown("""
-    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
-        <h4 style="color:#FFFFFF; margin-top:0;">⏰ 5. 自動タイマー（朝9時・夕方16:45/18:45）の実行ログ確認</h4>
-        <p style="color:#94A3B8; font-size:0.9rem;">
-            タイマーが正常に動作したかどうか、直近のログを確認します。
-        </p>
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">⏰ 5. 自動タイマーの実行ログ確認</h4>
     """, unsafe_allow_html=True)
     st.code("cat /home/ozdnyzww1/keiba_cron.log", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 6. 緊急停止・更地化
+    # 6. 緊急停止
     st.markdown("""
-    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
-        <h4 style="color:#FFFFFF; margin-top:0;">🧹 6. メモリ解放 ＆ 停止コマンド（緊急用）</h4>
-        <p style="color:#94A3B8; font-size:0.9rem;">
-            動作が重い時や、裏で残ってしまったブラウザプロセスを一掃して更地に戻します。
-        </p>
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🧹 6. メモリ解放 ＆ 停止コマンド（緊急用）</h4>
     """, unsafe_allow_html=True)
     st.code("killall -9 chromium chromium-driver chromedriver chrome 2>/dev/null", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
