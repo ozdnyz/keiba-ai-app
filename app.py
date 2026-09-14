@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 カスタムCSS
+# 🎨 カスタムCSS（タブ消失の完全修正・ダークテーマ）
 # ==========================================
 st.markdown("""
 <style>
@@ -45,38 +45,19 @@ st.markdown("""
         padding: 0.5rem 0.5rem 1.5rem 0.5rem;
     }
 
-    /* メニューテキストの表示・スタイル */
-    [data-testid="stSidebar"] div[role="radiogroup"] > label {
-        background-color: transparent !important;
-        padding: 8px 12px !important;
-        border-radius: 8px !important;
-        margin-bottom: 4px !important;
+    /* 🌟 メニューテキストの表示を絶対保証するCSS */
+    [data-testid="stSidebar"] div[role="radiogroup"] label {
         cursor: pointer !important;
-        border: none !important;
     }
-    [data-testid="stSidebar"] div[role="radiogroup"] > label div:first-child {
-        display: none !important; /* ラジオボタンの丸を消す */
-    }
-    [data-testid="stSidebar"] div[role="radiogroup"] > label p {
+    /* 非表示にする危険なコード(display: none)を全削除し、テキスト色を明示 */
+    [data-testid="stSidebar"] div[role="radiogroup"] p {
         color: #94A3B8 !important;
-        font-size: 0.95rem !important;
-        font-weight: 500 !important;
-    }
-    [data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"],
-    [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) {
-        background-color: #1E2238 !important;
-        border-left: 3px solid #6366F1 !important;
-    }
-    [data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] p,
-    [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) p {
-        color: #FFFFFF !important;
+        font-size: 1.05rem !important;
         font-weight: 600 !important;
     }
-    [data-testid="stSidebar"] div[role="radiogroup"] > label:hover {
-        background-color: #161C2E !important;
-    }
-    [data-testid="stSidebar"] div[role="radiogroup"] > label:hover p {
-        color: #E2E8F0 !important;
+    [data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] p,
+    [data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) p {
+        color: #FFFFFF !important; /* 選択時は純白 */
     }
 
     /* システム稼働中バッジ（左下固定） */
@@ -497,7 +478,7 @@ elif menu == "🎯 厳選勝負レース":
         st.info("スプレッドシートに最新の勝負レースデータがありません。")
 
 # ==========================================
-# 🏇 画面 3: 全レース出馬表（新機能）
+# 🏇 画面 3: 全レース出馬表
 # ==========================================
 elif menu == "🏇 全レース出馬表":
     st.markdown('<div class="main-title">全レース出馬表 ＆ AI評価印</div>', unsafe_allow_html=True)
@@ -507,11 +488,9 @@ elif menu == "🏇 全レース出馬表":
         latest_date_str = df_today['日付'].max()
         df_today_latest = df_today[df_today['日付'] == latest_date_str]
         
-        # 会場ごとにタブを作成
         venues = df_today_latest['会場'].unique()
         tabs = st.tabs([f"📍 {v}" for v in venues])
         
-        # 「◯R」の数字部分を抽出してソートする関数
         def extract_r_num(x):
             m = re.search(r'^(\d+)R', x)
             return int(m.group(1)) if m else 99
@@ -519,32 +498,29 @@ elif menu == "🏇 全レース出馬表":
         for i, venue in enumerate(venues):
             with tabs[i]:
                 venue_df = df_today_latest[df_today_latest['会場'] == venue]
-                
-                # レース番号順にソート（1R, 2R...）
                 race_names = sorted(venue_df['レース名'].unique(), key=extract_r_num)
                 
                 for rname in race_names:
                     sub_df = venue_df[venue_df['レース名'] == rname].copy()
-                    
-                    # 芝/ダート・距離情報
                     cond = str(sub_df.iloc[0]['芝・ダ・障']) + str(sub_df.iloc[0]['距離']) + "m"
                     
-                    # クリックで開閉するアコーディオン形式
                     with st.expander(f"🏁 {venue} {rname} （{cond}）"):
                         
-                        # 必要なカラムだけ抽出して見やすく成形
                         disp_cols = ['馬番', '評価', '馬名', '単勝オッズ', '人気', 'RL', 'CL', 'AIスコア', 'AI判定']
                         actual_cols = [c for c in disp_cols if c in sub_df.columns]
                         display_df = sub_df[actual_cols].copy()
-                        
-                        # 「評価」カラムを「印」に変更
                         display_df = display_df.rename(columns={'評価': '印'})
                         
-                        # 馬番順にソート
                         display_df['馬番'] = pd.to_numeric(display_df['馬番'], errors='coerce')
                         display_df = display_df.sort_values('馬番')
                         
-                        # 🌟 印に色を付けて見やすくする関数
+                        # 🌟 余分な小数点以下をカットするフォーマット指定
+                        format_dict = {}
+                        if '単勝オッズ' in display_df.columns: format_dict['単勝オッズ'] = "{:.1f}"
+                        if 'AIスコア' in display_df.columns: format_dict['AIスコア'] = "{:.2f}"
+                        if 'RL' in display_df.columns: format_dict['RL'] = "{:.0f}"
+                        if 'CL' in display_df.columns: format_dict['CL'] = "{:.0f}"
+
                         def color_marks(val):
                             if val == '◎': return 'color: #EF4444; font-weight: 900; font-size: 16px;'
                             elif val == '◯': return 'color: #3B82F6; font-weight: 900; font-size: 16px;'
@@ -552,11 +528,10 @@ elif menu == "🏇 全レース出馬表":
                             elif val == '△': return 'color: #F59E0B; font-weight: 900; font-size: 16px;'
                             return 'color: #94A3B8;'
 
-                        # スタイルの適用（Pandasのバージョン互換対応）
                         if hasattr(display_df.style, 'map'):
-                            styled_df = display_df.style.map(color_marks, subset=['印'])
+                            styled_df = display_df.style.map(color_marks, subset=['印']).format(format_dict, na_rep="-")
                         else:
-                            styled_df = display_df.style.applymap(color_marks, subset=['印'])
+                            styled_df = display_df.style.applymap(color_marks, subset=['印']).format(format_dict, na_rep="-")
                         
                         st.dataframe(
                             styled_df,
