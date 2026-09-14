@@ -22,14 +22,12 @@ st.set_page_config(
 # ==========================================
 st.markdown("""
 <style>
-    /* 全体背景とフォント */
     .stApp {
         background-color: #0B0F19 !important;
         color: #F3F4F6 !important;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     
-    /* サイドバー */
     [data-testid="stSidebar"] {
         background-color: #0E1322 !important;
         border-right: 1px solid #1E2640 !important;
@@ -45,7 +43,6 @@ st.markdown("""
         padding: 0.5rem 0.5rem 1.5rem 0.5rem;
     }
 
-    /* メニューの丸ポッチを物理的に消滅させるCSS */
     [data-testid="stSidebar"] div[role="radiogroup"] > label {
         background-color: transparent !important;
         padding: 8px 12px !important;
@@ -85,7 +82,6 @@ st.markdown("""
         color: #E2E8F0 !important;
     }
 
-    /* エクスパンダーのダーク化 */
     [data-testid="stExpander"] details {
         background-color: #141A29 !important;
         border: 1px solid #1E273D !important;
@@ -109,7 +105,6 @@ st.markdown("""
         padding: 16px !important;
     }
 
-    /* システム稼働中バッジ（左下固定） */
     .sidebar-user {
         position: fixed !important;
         bottom: 24px !important;
@@ -152,7 +147,6 @@ st.markdown("""
         gap: 4px;
     }
 
-    /* メインヘッダー */
     .main-title {
         font-size: 1.85rem;
         font-weight: 700;
@@ -166,7 +160,6 @@ st.markdown("""
         margin-bottom: 1.2rem;
     }
 
-    /* 通常ボタンの白抜き防止 */
     button[kind="secondary"], 
     button[kind="primary"],
     [data-testid="stButton"] button {
@@ -190,14 +183,12 @@ st.markdown("""
         color: #FFFFFF !important;
     }
 
-    /* 🌟 フォーム・入力枠・ラベルの視認性向上CSS */
     [data-testid="stForm"] {
         background-color: #141A29 !important;
         border: 1px solid #1E273D !important;
         border-radius: 12px !important;
         padding: 1.5rem !important;
     }
-    /* ラベルの文字を純白・太字にしてくっきり表示 */
     [data-testid="stForm"] label,
     [data-testid="stWidgetLabel"] label,
     [data-testid="stWidgetLabel"] p {
@@ -205,7 +196,6 @@ st.markdown("""
         font-weight: 700 !important;
         font-size: 0.95rem !important;
     }
-    /* 日付・数値入力欄の背景をダーク化＆白文字 */
     [data-testid="stForm"] input,
     [data-testid="stDateInput"] input,
     [data-testid="stNumberInput"] input {
@@ -216,7 +206,6 @@ st.markdown("""
         font-size: 1rem !important;
         font-weight: 600 !important;
     }
-    /* 数値入力欄の +/- ボタン */
     [data-testid="stNumberInput"] button {
         background-color: #1E273D !important;
         color: #CBD5E1 !important;
@@ -227,7 +216,6 @@ st.markdown("""
         color: #FFFFFF !important;
     }
 
-    /* 🌟 フォーム保存ボタンの白抜き完全防止（パープル＆純白太字） */
     [data-testid="stFormSubmitButton"] button {
         background-color: #4F46E5 !important;
         color: #FFFFFF !important;
@@ -246,12 +234,7 @@ st.markdown("""
         background-color: #4338CA !important;
         border-color: #818CF8 !important;
     }
-    [data-testid="stFormSubmitButton"] button:hover p,
-    [data-testid="stFormSubmitButton"] button:hover span {
-        color: #FFFFFF !important;
-    }
 
-    /* KPIカード */
     .kpi-card {
         background: #141A29;
         border: 1px solid #1E273D;
@@ -299,7 +282,6 @@ st.markdown("""
         font-weight: 600;
     }
 
-    /* レースカードスタイル */
     .race-card {
         background: #141A29;
         border: 1px solid #1E273D;
@@ -532,8 +514,18 @@ if menu == "📊 ダッシュボード":
 
     st.write("")
 
-    # 回収率推移グラフ
-    st.markdown('<div style="font-size:1.15rem; font-weight:700; color:#FFFFFF;">回収率推移（AI理論値 vs あなたの実績）</div>', unsafe_allow_html=True)
+    # ==========================================
+    # 📈 回収率推移グラフ（日毎/月ごと/年ごと 切り替え）
+    # ==========================================
+    col_chart_title, col_chart_select = st.columns([6, 3])
+    with col_chart_title:
+        st.markdown('<div style="font-size:1.15rem; font-weight:700; color:#FFFFFF;">回収率推移（AI理論値 vs あなたの実績）</div>', unsafe_allow_html=True)
+    with col_chart_select:
+        chart_mode = st.selectbox(
+            "期間・単位",
+            ["日毎 (直近10日)", "日毎 (直近30日)", "月ごと (月別集計)", "年ごと (年別集計)", "全期間 (累積推移)"],
+            label_visibility="collapsed"
+        )
 
     fig = go.Figure()
     if df_daily_log is not None and not df_daily_log.empty and 'AI投資額' in df_daily_log.columns:
@@ -543,29 +535,84 @@ if menu == "📊 ダッシュボード":
         df_plot['ユーザー投資額'] = pd.to_numeric(df_plot['ユーザー投資額'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         df_plot['ユーザー回収額'] = pd.to_numeric(df_plot['ユーザー回収額'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
 
-        df_plot['AI_CUM_INV'] = df_plot['AI投資額'].cumsum()
-        df_plot['AI_CUM_RET'] = df_plot['AI回収額'].cumsum()
-        df_plot['USR_CUM_INV'] = df_plot['ユーザー投資額'].cumsum()
-        df_plot['USR_CUM_RET'] = df_plot['ユーザー回収額'].cumsum()
+        # 日付型変換とソート
+        df_plot['日付_dt'] = pd.to_datetime(df_plot['日付'], errors='coerce')
+        df_plot = df_plot.dropna(subset=['日付_dt']).sort_values('日付_dt').reset_index(drop=True)
 
-        df_plot['AI_ROI'] = np.where(df_plot['AI_CUM_INV'] > 0, (df_plot['AI_CUM_RET'] / df_plot['AI_CUM_INV']) * 100, 100.0)
-        df_plot['USR_ROI'] = np.where(df_plot['USR_CUM_INV'] > 0, (df_plot['USR_CUM_RET'] / df_plot['USR_CUM_INV']) * 100, 100.0)
+        if not df_plot.empty:
+            if chart_mode == "日毎 (直近10日)":
+                sub_df = df_plot.tail(10).copy()
+                sub_df['AI_CUM_INV'] = sub_df['AI投資額'].cumsum()
+                sub_df['AI_CUM_RET'] = sub_df['AI回収額'].cumsum()
+                sub_df['USR_CUM_INV'] = sub_df['ユーザー投資額'].cumsum()
+                sub_df['USR_CUM_RET'] = sub_df['ユーザー回収額'].cumsum()
+                x_vals = sub_df['日付_dt'].dt.strftime('%m/%d').tolist()
+                ai_vals = np.where(sub_df['AI_CUM_INV'] > 0, (sub_df['AI_CUM_RET'] / sub_df['AI_CUM_INV']) * 100, 100.0)
+                usr_vals = np.where(sub_df['USR_CUM_INV'] > 0, (sub_df['USR_CUM_RET'] / sub_df['USR_CUM_INV']) * 100, 100.0)
 
-        dates = df_plot['日付'].tolist()
-        fig.add_trace(go.Scatter(
-            x=dates, y=df_plot['AI_ROI'],
-            name="AI理論回収率 (1点100円)",
-            mode="lines+markers",
-            line=dict(color="#6366F1", width=3, shape="spline"),
-            marker=dict(size=7, color="#6366F1", line=dict(color="#FFFFFF", width=1.5))
-        ))
-        fig.add_trace(go.Scatter(
-            x=dates, y=df_plot['USR_ROI'],
-            name="あなたの実回収率",
-            mode="lines+markers",
-            line=dict(color="#10B981", width=3, shape="spline"),
-            marker=dict(size=7, color="#10B981", line=dict(color="#FFFFFF", width=1.5))
-        ))
+            elif chart_mode == "日毎 (直近30日)":
+                sub_df = df_plot.tail(30).copy()
+                sub_df['AI_CUM_INV'] = sub_df['AI投資額'].cumsum()
+                sub_df['AI_CUM_RET'] = sub_df['AI回収額'].cumsum()
+                sub_df['USR_CUM_INV'] = sub_df['ユーザー投資額'].cumsum()
+                sub_df['USR_CUM_RET'] = sub_df['ユーザー回収額'].cumsum()
+                x_vals = sub_df['日付_dt'].dt.strftime('%m/%d').tolist()
+                ai_vals = np.where(sub_df['AI_CUM_INV'] > 0, (sub_df['AI_CUM_RET'] / sub_df['AI_CUM_INV']) * 100, 100.0)
+                usr_vals = np.where(sub_df['USR_CUM_INV'] > 0, (sub_df['USR_CUM_RET'] / sub_df['USR_CUM_INV']) * 100, 100.0)
+
+            elif chart_mode == "月ごと (月別集計)":
+                df_plot['年月'] = df_plot['日付_dt'].dt.strftime('%Y/%m')
+                sub_df = df_plot.groupby('年月', as_index=False).agg({
+                    'AI投資額': 'sum',
+                    'AI回収額': 'sum',
+                    'ユーザー投資額': 'sum',
+                    'ユーザー回収額': 'sum'
+                })
+                x_vals = sub_df['年月'].tolist()
+                ai_vals = np.where(sub_df['AI投資額'] > 0, (sub_df['AI回収額'] / sub_df['AI投資額']) * 100, 0.0)
+                usr_vals = np.where(sub_df['ユーザー投資額'] > 0, (sub_df['ユーザー回収額'] / sub_df['ユーザー投資額']) * 100, 0.0)
+
+            elif chart_mode == "年ごと (年別集計)":
+                df_plot['年'] = df_plot['日付_dt'].dt.strftime('%Y年')
+                sub_df = df_plot.groupby('年', as_index=False).agg({
+                    'AI投資額': 'sum',
+                    'AI回収額': 'sum',
+                    'ユーザー投資額': 'sum',
+                    'ユーザー回収額': 'sum'
+                })
+                x_vals = sub_df['年'].tolist()
+                ai_vals = np.where(sub_df['AI投資額'] > 0, (sub_df['AI回収額'] / sub_df['AI投資額']) * 100, 0.0)
+                usr_vals = np.where(sub_df['ユーザー投資額'] > 0, (sub_df['ユーザー回収額'] / sub_df['ユーザー投資額']) * 100, 0.0)
+
+            else:  # 全期間 (累積推移)
+                sub_df = df_plot.copy()
+                sub_df['AI_CUM_INV'] = sub_df['AI投資額'].cumsum()
+                sub_df['AI_CUM_RET'] = sub_df['AI回収額'].cumsum()
+                sub_df['USR_CUM_INV'] = sub_df['ユーザー投資額'].cumsum()
+                sub_df['USR_CUM_RET'] = sub_df['ユーザー回収額'].cumsum()
+                x_vals = sub_df['日付_dt'].dt.strftime('%Y/%m/%d').tolist()
+                ai_vals = np.where(sub_df['AI_CUM_INV'] > 0, (sub_df['AI_CUM_RET'] / sub_df['AI_CUM_INV']) * 100, 100.0)
+                usr_vals = np.where(sub_df['USR_CUM_INV'] > 0, (sub_df['USR_CUM_RET'] / sub_df['USR_CUM_INV']) * 100, 100.0)
+
+            # AI理論回収率ライン
+            fig.add_trace(go.Scatter(
+                x=x_vals, y=ai_vals,
+                name="AI理論回収率 (1点100円)",
+                mode="lines+markers",
+                line=dict(color="#6366F1", width=3, shape="spline"),
+                marker=dict(size=7, color="#6366F1", line=dict(color="#FFFFFF", width=1.5)),
+                hovertemplate="%{x}<br>AI回収率: %{y:.1f}%<extra></extra>"
+            ))
+
+            # ユーザー実回収率ライン
+            fig.add_trace(go.Scatter(
+                x=x_vals, y=usr_vals,
+                name="あなたの実回収率",
+                mode="lines+markers",
+                line=dict(color="#10B981", width=3, shape="spline"),
+                marker=dict(size=7, color="#10B981", line=dict(color="#FFFFFF", width=1.5)),
+                hovertemplate="%{x}<br>実回収率: %{y:.1f}%<extra></extra>"
+            ))
     else:
         dates = [f"9/{i}" for i in range(5, 15)]
         ai_roi_demo = [108.0, 109.5, 115.0, 111.0, 114.5, 120.5, 118.0, 122.5, 124.2, 128.7]
@@ -576,6 +623,16 @@ if menu == "📊 ダッシュボード":
             line=dict(color="#6366F1", width=3, shape="spline"),
             marker=dict(size=7, color="#6366F1", line=dict(color="#FFFFFF", width=1.5))
         ))
+
+    # 損益分岐ライン（100%基準線）
+    fig.add_hline(
+        y=100,
+        line_dash="dash",
+        line_color="#475569",
+        annotation_text="100% 損益分岐点",
+        annotation_position="bottom right",
+        annotation_font_color="#94A3B8"
+    )
 
     fig.update_layout(
         height=340,
