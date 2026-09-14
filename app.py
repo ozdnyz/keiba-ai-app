@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 カスタムCSS（白飛び完全防御・ダークテーマ強制）
+# 🎨 カスタムCSS
 # ==========================================
 st.markdown("""
 <style>
@@ -45,7 +45,7 @@ st.markdown("""
         padding: 0.5rem 0.5rem 1.5rem 0.5rem;
     }
 
-    /* 🌟 メニューの丸ポッチを物理的に消滅させるCSS */
+    /* メニューの丸ポッチを物理的に消滅させるCSS */
     [data-testid="stSidebar"] div[role="radiogroup"] > label {
         background-color: transparent !important;
         padding: 8px 12px !important;
@@ -85,7 +85,7 @@ st.markdown("""
         color: #E2E8F0 !important;
     }
 
-    /* 🌟 エクスパンダー（折りたたみ枠）の白飛び防止・ダーク化 */
+    /* エクスパンダーのダーク化 */
     [data-testid="stExpander"] details {
         background-color: #141A29 !important;
         border: 1px solid #1E273D !important;
@@ -166,7 +166,7 @@ st.markdown("""
         margin-bottom: 1.2rem;
     }
 
-    /* ボタンの白抜き防止 */
+    /* ボタン */
     button[kind="secondary"], 
     button[kind="primary"],
     [data-testid="stButton"] button {
@@ -335,7 +335,7 @@ def load_sheet_data():
 df_target, df_today = load_sheet_data()
 
 # ==========================================
-# 🗂️ サイドバー メニュー構築
+# 🗂️ サイドバー メニュー構築（マニュアル追加）
 # ==========================================
 with st.sidebar:
     st.markdown("""
@@ -346,7 +346,7 @@ with st.sidebar:
 
     menu = st.radio(
         "",
-        ["📊 ダッシュボード", "🎯 厳選勝負レース", "🏇 全レース出馬表", "🗄️ 過去データ分析", "📈 スプレッドシート連携"],
+        ["📊 ダッシュボード", "🎯 厳選勝負レース", "🏇 全レース出馬表", "💻 ターミナル操作マニュアル", "🗄️ 過去データ分析", "📈 スプレッドシート連携"],
         label_visibility="collapsed"
     )
 
@@ -525,7 +525,7 @@ elif menu == "🎯 厳選勝負レース":
         st.info("スプレッドシートに最新の勝負レースデータがありません。")
 
 # ==========================================
-# 🏇 画面 3: 全レース出馬表（HTMLカスタム描画版）
+# 🏇 画面 3: 全レース出馬表
 # ==========================================
 elif menu == "🏇 全レース出馬表":
     st.markdown('<div class="main-title">全レース出馬表 ＆ AI評価印</div>', unsafe_allow_html=True)
@@ -552,20 +552,15 @@ elif menu == "🏇 全レース出馬表":
                     cond = str(sub_df.iloc[0]['芝・ダ・障']) + str(sub_df.iloc[0]['距離']) + "m"
                     
                     with st.expander(f"🏁 {venue} {rname} （{cond}）"):
-                        
                         disp_cols = ['馬番', '印', '馬名', '単勝オッズ', '人気', 'RL', 'CL', 'AIスコア', 'AI判定']
-                        
-                        # カラム名を統一（スプレッドシートの「評価」を「印」として扱う）
                         if '評価' in sub_df.columns:
                             sub_df = sub_df.rename(columns={'評価': '印'})
                         
                         actual_cols = [c for c in disp_cols if c in sub_df.columns]
                         display_df = sub_df[actual_cols].copy()
-                        
                         display_df['馬番'] = pd.to_numeric(display_df['馬番'], errors='coerce')
                         display_df = display_df.sort_values('馬番')
                         
-                        # 🌟 Pythonで直接HTMLテーブルを構築（白飛びを完全に防ぎ、デザインを強制する）
                         html_table = """
                         <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #1E273D;">
                         <table style="width:100%; border-collapse: collapse; text-align: center; color: #F3F4F6; font-size: 0.95rem; background-color: #141A29;">
@@ -580,15 +575,12 @@ elif menu == "🏇 全レース出馬表":
                             html_table += "<tr style='border-bottom: 1px solid #1E273D;'>"
                             for col in actual_cols:
                                 val = row[col]
-                                
-                                # 印のカスタムカラーリング
                                 if col == '印':
                                     if val == '◎': val = "<span style='color: #EF4444; font-weight: 900; font-size: 1.1rem;'>◎</span>"
                                     elif val == '◯': val = "<span style='color: #3B82F6; font-weight: 900; font-size: 1.1rem;'>◯</span>"
                                     elif val == '▲': val = "<span style='color: #10B981; font-weight: 900; font-size: 1.1rem;'>▲</span>"
                                     elif val == '△': val = "<span style='color: #F59E0B; font-weight: 900; font-size: 1.1rem;'>△</span>"
                                 
-                                # 数値のフォーマット（無駄な0をカット）
                                 if pd.notna(val) and val != "":
                                     try:
                                         if col == '単勝オッズ': val = f"{float(val):.1f}"
@@ -604,13 +596,59 @@ elif menu == "🏇 全レース出馬表":
                             html_table += "</tr>"
                         html_table += "</tbody></table></div>"
                         
-                        # 生成した完璧なHTMLをそのまま描画
                         st.markdown(html_table, unsafe_allow_html=True)
     else:
         st.info("スプレッドシートに最新の全頭データがありません。")
 
 # ==========================================
-# 🗄️ 画面 4: 過去データ分析
+# 💻 画面 4: ターミナル操作マニュアル（★新設）
+# ==========================================
+elif menu == "💻 ターミナル操作マニュアル":
+    st.markdown('<div class="main-title">Chromebook ターミナル操作マニュアル</div>', unsafe_allow_html=True)
+    st.markdown('<div class="last-update">各枠右上のコピーボタンを押してターミナルに貼り付けてください</div>', unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
+        <h4 style="color:#FFFFFF; margin-top:0;">⚡ 1. 本日のリアルタイム予想実行</h4>
+        <p style="color:#94A3B8; font-size:0.9rem;">
+            当日朝（8:30〜9:30頃）にChromebookのターミナルで実行します。全レースを自動巡回し、勝負レースをスプレッドシートに反映します。
+        </p>
+    """, unsafe_allow_html=True)
+    st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 run.py", language="bash")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
+        <h4 style="color:#FFFFFF; margin-top:0;">📅 2. 過去日付のシミュレーション実行</h4>
+        <p style="color:#94A3B8; font-size:0.9rem;">
+            過去の特定日や2日間の検証を行う場合、半角スペース区切りで日付（YYYYMMDD）を指定して実行します。
+        </p>
+    """, unsafe_allow_html=True)
+    st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 run.py 20260912 20260913", language="bash")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
+        <h4 style="color:#FFFFFF; margin-top:0;">⏰ 3. 自動タイマー（朝9時実行）のログ確認</h4>
+        <p style="color:#94A3B8; font-size:0.9rem;">
+            土日の朝9時に自動実行された処理が正常に完了したか、直近の実行ログを確認します。
+        </p>
+    """, unsafe_allow_html=True)
+    st.code("cat /home/ozdnyzww1/keiba_cron.log", language="bash")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
+        <h4 style="color:#FFFFFF; margin-top:0;">🧹 4. メモリ解放 ＆ 停止コマンド（緊急用）</h4>
+        <p style="color:#94A3B8; font-size:0.9rem;">
+            動作が重い時や、裏で残ってしまったブラウザプロセスを一掃して更地に戻します。
+        </p>
+    """, unsafe_allow_html=True)
+    st.code("killall -9 chromium chromium-driver chromedriver chrome 2>/dev/null", language="bash")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# ==========================================
+# 🗄️ 画面 5: 過去データ分析
 # ==========================================
 elif menu == "🗄️ 過去データ分析":
     st.markdown('<div class="main-title">過去データバックテスト分析</div>', unsafe_allow_html=True)
@@ -625,7 +663,7 @@ elif menu == "🗄️ 過去データ分析":
     """)
 
 # ==========================================
-# 📈 画面 5: スプレッドシート連携
+# 📈 画面 6: スプレッドシート連携
 # ==========================================
 elif menu == "📈 スプレッドシート連携":
     st.markdown('<div class="main-title">Google スプレッドシート連携ステータス</div>', unsafe_allow_html=True)
