@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from datetime import datetime
 import json
 import os
+import re
 import gspread
 from google.oauth2.service_account import Credentials
 
@@ -17,7 +18,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 カスタムCSS（タブ崩れ修正・完全ダークテーマ）
+# 🎨 カスタムCSS
 # ==========================================
 st.markdown("""
 <style>
@@ -28,13 +29,12 @@ st.markdown("""
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     
-    /* サイドバーの背景 */
+    /* サイドバー */
     [data-testid="stSidebar"] {
         background-color: #0E1322 !important;
         border-right: 1px solid #1E2640 !important;
     }
     
-    /* サイドバーのロゴ */
     .sidebar-logo {
         display: flex;
         align-items: center;
@@ -45,7 +45,7 @@ st.markdown("""
         padding: 0.5rem 0.5rem 1.5rem 0.5rem;
     }
 
-    /* 🌟 サイドバーメニューのテキストが見えなくなる問題を修正 */
+    /* メニューテキストの表示・スタイル */
     [data-testid="stSidebar"] div[role="radiogroup"] > label {
         background-color: transparent !important;
         padding: 8px 12px !important;
@@ -54,13 +54,14 @@ st.markdown("""
         cursor: pointer !important;
         border: none !important;
     }
-    /* テキストの文字色を明示的に指定 */
+    [data-testid="stSidebar"] div[role="radiogroup"] > label div:first-child {
+        display: none !important; /* ラジオボタンの丸を消す */
+    }
     [data-testid="stSidebar"] div[role="radiogroup"] > label p {
         color: #94A3B8 !important;
         font-size: 0.95rem !important;
         font-weight: 500 !important;
     }
-    /* 選択時のスタイル */
     [data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"],
     [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) {
         background-color: #1E2238 !important;
@@ -71,7 +72,6 @@ st.markdown("""
         color: #FFFFFF !important;
         font-weight: 600 !important;
     }
-    /* ホバー時のスタイル */
     [data-testid="stSidebar"] div[role="radiogroup"] > label:hover {
         background-color: #161C2E !important;
     }
@@ -79,7 +79,7 @@ st.markdown("""
         color: #E2E8F0 !important;
     }
 
-    /* システム稼働中バッジを「画面左下」に完全固定 */
+    /* システム稼働中バッジ（左下固定） */
     .sidebar-user {
         position: fixed !important;
         bottom: 24px !important;
@@ -307,7 +307,7 @@ def load_sheet_data():
 df_target, df_today = load_sheet_data()
 
 # ==========================================
-# 🗂️ サイドバー
+# 🗂️ サイドバー メニュー構築
 # ==========================================
 with st.sidebar:
     st.markdown("""
@@ -318,7 +318,7 @@ with st.sidebar:
 
     menu = st.radio(
         "",
-        ["📊 ダッシュボード", "📑 本日のレース予測", "🗄️ 過去データ分析", "📈 スプレッドシート連携"],
+        ["📊 ダッシュボード", "🎯 厳選勝負レース", "🏇 全レース出馬表", "🗄️ 過去データ分析", "📈 スプレッドシート連携"],
         label_visibility="collapsed"
     )
 
@@ -336,7 +336,6 @@ with st.sidebar:
 # 🚀 画面 1: 📊 ダッシュボード
 # ==========================================
 if menu == "📊 ダッシュボード":
-    # ヘッダー構成（「半自動運用」ボタンを削除してスッキリ2カラムに）
     col_h_left, col_h_right = st.columns([8, 2])
     now_str = datetime.now().strftime("%Y年%m月%d日 %H:%M")
 
@@ -347,23 +346,18 @@ if menu == "📊 ダッシュボード":
         """, unsafe_allow_html=True)
 
     with col_h_right:
-        st.markdown('<div class="btn-update">', unsafe_allow_html=True)
         if st.button("🔄 データ更新", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-
     st.write("")
 
-    # 🌟 最新日付のみを抽出してカウントするロジック（12/10R問題の修正）
     today_target_count = 0
     today_race_count = 0
     latest_date_str = ""
 
     if df_target is not None and not df_target.empty and '日付' in df_target.columns:
-        latest_date_str = df_target['日付'].max() # 記録されている一番新しい日付
+        latest_date_str = df_target['日付'].max()
         df_target_latest = df_target[df_target['日付'] == latest_date_str]
-        # その日付のユニークなレース名数をカウント
         today_target_count = len(df_target_latest[['競馬場', 'レース名']].drop_duplicates())
 
     if df_today is not None and not df_today.empty and '日付' in df_today.columns:
@@ -372,7 +366,6 @@ if menu == "📊 ダッシュボード":
         df_today_latest = df_today[df_today['日付'] == latest_date_str]
         today_race_count = len(df_today_latest['レース名'].unique())
     
-    # 投資額は最新日の勝負レース数 × 200円
     today_investment = today_target_count * 200
 
     c1, c2, c3, c4 = st.columns(4)
@@ -420,7 +413,6 @@ if menu == "📊 ダッシュボード":
 
     st.write("")
 
-    # 回収率推移グラフ
     col_chart_title, col_chart_select = st.columns([7, 2])
     with col_chart_title:
         st.markdown('<div style="font-size:1.15rem; font-weight:700; color:#FFFFFF;">回収率推移（実績 vs AI予測）</div>', unsafe_allow_html=True)
@@ -447,14 +439,7 @@ if menu == "📊 ダッシュボード":
         paper_bgcolor="#141A29",
         plot_bgcolor="#141A29",
         font=dict(color="#94A3B8", size=12),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="center",
-            x=0.5,
-            font=dict(size=12, color="#CBD5E1")
-        ),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=12, color="#CBD5E1")),
         xaxis=dict(showgrid=True, gridcolor="#1E273D", zeroline=False),
         yaxis=dict(showgrid=True, gridcolor="#1E273D", zeroline=False, ticksuffix="%", range=[105, 135]),
         hovermode="x unified"
@@ -462,9 +447,9 @@ if menu == "📊 ダッシュボード":
     st.plotly_chart(fig, use_container_width=True)
 
 # ==========================================
-# 📑 画面 2: 本日のレース予測
+# 🎯 画面 2: 厳選勝負レース
 # ==========================================
-elif menu == "📑 本日のレース予測":
+elif menu == "🎯 厳選勝負レース":
     st.markdown('<div class="main-title">本日の厳選勝負レース（馬連2点）</div>', unsafe_allow_html=True)
     st.markdown('<div class="last-update">スプレッドシート「本日勝負レース」からリアルタイム取得中</div>', unsafe_allow_html=True)
 
@@ -512,7 +497,77 @@ elif menu == "📑 本日のレース予測":
         st.info("スプレッドシートに最新の勝負レースデータがありません。")
 
 # ==========================================
-# 🗄️ 画面 3: 過去データ分析
+# 🏇 画面 3: 全レース出馬表（新機能）
+# ==========================================
+elif menu == "🏇 全レース出馬表":
+    st.markdown('<div class="main-title">全レース出馬表 ＆ AI評価印</div>', unsafe_allow_html=True)
+    st.markdown('<div class="last-update">全頭のAIスコアと評価印（◎◯▲△）を一覧表示します</div>', unsafe_allow_html=True)
+
+    if df_today is not None and not df_today.empty and '日付' in df_today.columns:
+        latest_date_str = df_today['日付'].max()
+        df_today_latest = df_today[df_today['日付'] == latest_date_str]
+        
+        # 会場ごとにタブを作成
+        venues = df_today_latest['会場'].unique()
+        tabs = st.tabs([f"📍 {v}" for v in venues])
+        
+        # 「◯R」の数字部分を抽出してソートする関数
+        def extract_r_num(x):
+            m = re.search(r'^(\d+)R', x)
+            return int(m.group(1)) if m else 99
+
+        for i, venue in enumerate(venues):
+            with tabs[i]:
+                venue_df = df_today_latest[df_today_latest['会場'] == venue]
+                
+                # レース番号順にソート（1R, 2R...）
+                race_names = sorted(venue_df['レース名'].unique(), key=extract_r_num)
+                
+                for rname in race_names:
+                    sub_df = venue_df[venue_df['レース名'] == rname].copy()
+                    
+                    # 芝/ダート・距離情報
+                    cond = str(sub_df.iloc[0]['芝・ダ・障']) + str(sub_df.iloc[0]['距離']) + "m"
+                    
+                    # クリックで開閉するアコーディオン形式
+                    with st.expander(f"🏁 {venue} {rname} （{cond}）"):
+                        
+                        # 必要なカラムだけ抽出して見やすく成形
+                        disp_cols = ['馬番', '評価', '馬名', '単勝オッズ', '人気', 'RL', 'CL', 'AIスコア', 'AI判定']
+                        actual_cols = [c for c in disp_cols if c in sub_df.columns]
+                        display_df = sub_df[actual_cols].copy()
+                        
+                        # 「評価」カラムを「印」に変更
+                        display_df = display_df.rename(columns={'評価': '印'})
+                        
+                        # 馬番順にソート
+                        display_df['馬番'] = pd.to_numeric(display_df['馬番'], errors='coerce')
+                        display_df = display_df.sort_values('馬番')
+                        
+                        # 🌟 印に色を付けて見やすくする関数
+                        def color_marks(val):
+                            if val == '◎': return 'color: #EF4444; font-weight: 900; font-size: 16px;'
+                            elif val == '◯': return 'color: #3B82F6; font-weight: 900; font-size: 16px;'
+                            elif val == '▲': return 'color: #10B981; font-weight: 900; font-size: 16px;'
+                            elif val == '△': return 'color: #F59E0B; font-weight: 900; font-size: 16px;'
+                            return 'color: #94A3B8;'
+
+                        # スタイルの適用（Pandasのバージョン互換対応）
+                        if hasattr(display_df.style, 'map'):
+                            styled_df = display_df.style.map(color_marks, subset=['印'])
+                        else:
+                            styled_df = display_df.style.applymap(color_marks, subset=['印'])
+                        
+                        st.dataframe(
+                            styled_df,
+                            use_container_width=True,
+                            hide_index=True
+                        )
+    else:
+        st.info("スプレッドシートに最新の全頭データがありません。")
+
+# ==========================================
+# 🗄️ 画面 4: 過去データ分析
 # ==========================================
 elif menu == "🗄️ 過去データ分析":
     st.markdown('<div class="main-title">過去データバックテスト分析</div>', unsafe_allow_html=True)
@@ -527,7 +582,7 @@ elif menu == "🗄️ 過去データ分析":
     """)
 
 # ==========================================
-# 📈 画面 4: スプレッドシート連携
+# 📈 画面 5: スプレッドシート連携
 # ==========================================
 elif menu == "📈 スプレッドシート連携":
     st.markdown('<div class="main-title">Google スプレッドシート連携ステータス</div>', unsafe_allow_html=True)
