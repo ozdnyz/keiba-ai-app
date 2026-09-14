@@ -17,7 +17,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 カスタムCSS（白抜き防止・完全ダークテーマ）
+# 🎨 カスタムCSS（白抜き完全根絶・左下固定）
 # ==========================================
 st.markdown("""
 <style>
@@ -28,7 +28,7 @@ st.markdown("""
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     
-    /* サイドバーのスタイル */
+    /* サイドバーの背景 */
     [data-testid="stSidebar"] {
         background-color: #0E1322 !important;
         border-right: 1px solid #1E2640 !important;
@@ -45,7 +45,10 @@ st.markdown("""
         padding: 0.5rem 0.5rem 1.5rem 0.5rem;
     }
 
-    /* サイドバーのラジオボタンスタイル（メニュー化） */
+    /* ラジオボタンの丸（ポッチ）を消して綺麗なメニューにする */
+    [data-testid="stSidebar"] div[role="radiogroup"] label div:first-child {
+        display: none !important;
+    }
     [data-testid="stSidebar"] div[role="radiogroup"] > label {
         background-color: transparent !important;
         padding: 10px 14px !important;
@@ -54,10 +57,9 @@ st.markdown("""
         font-size: 0.95rem !important;
         font-weight: 500 !important;
         margin-bottom: 6px !important;
-        transition: all 0.2s !important;
         cursor: pointer !important;
+        border: 1px solid transparent !important;
     }
-    [data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"],
     [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) {
         background-color: #1E2238 !important;
         color: #FFFFFF !important;
@@ -69,14 +71,20 @@ st.markdown("""
         color: #E2E8F0 !important;
     }
 
-    /* ユーザープロファイル（左下） */
+    /* 🌟 システム稼働中バッジを「画面左下」に完全固定 */
     .sidebar-user {
-        margin-top: 2rem;
-        padding: 12px 10px;
-        border-top: 1px solid #1E2640;
-        display: flex;
-        align-items: center;
-        gap: 12px;
+        position: fixed !important;
+        bottom: 24px !important;
+        left: 18px !important;
+        width: 220px !important;
+        z-index: 99999 !important;
+        background-color: #0E1322 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        padding: 8px 10px !important;
+        border-radius: 8px !important;
+        border: 1px solid #1E2640 !important;
     }
     .user-avatar {
         width: 36px;
@@ -89,8 +97,12 @@ st.markdown("""
         font-weight: 700;
         color: white;
     }
+    .user-info {
+        display: flex;
+        flex-direction: column;
+    }
     .user-name {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         font-weight: 600;
         color: #F8FAFC;
     }
@@ -116,41 +128,42 @@ st.markdown("""
         margin-bottom: 1.2rem;
     }
 
-    /* 🌟 ボタンの白抜きを根本から完全防止するCSS */
-    div[data-testid="stButton"] button {
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        font-size: 0.85rem !important;
-        padding: 0.55rem 1.1rem !important;
-        transition: all 0.2s !important;
-        border: none !important;
-    }
-    /* データ更新ボタン（濃紺・白文字） */
-    .btn-update button {
+    /* 🌟 ボタンの白抜きを全状態（ホバー・アクティブ含む）で完全根絶 */
+    button[kind="secondary"], 
+    button[kind="primary"],
+    [data-testid="stButton"] button {
         background-color: #161D2E !important;
         color: #E2E8F0 !important;
         border: 1px solid #2B354F !important;
+        border-radius: 8px !important;
+        padding: 0.55rem 1.1rem !important;
+        font-weight: 600 !important;
     }
-    .btn-update button:hover {
-        background-color: #1E273D !important;
-        border-color: #6366F1 !important;
-        color: #FFFFFF !important;
-    }
-    .btn-update button * {
+    [data-testid="stButton"] button p,
+    [data-testid="stButton"] button span {
         color: #E2E8F0 !important;
     }
-    /* 半自動運用ボタン（パープル・白文字） */
-    .btn-auto button {
-        background-color: #4F46E5 !important;
+    [data-testid="stButton"] button:hover {
+        background-color: #1E273D !important;
+        border-color: #6366F1 !important;
+    }
+    [data-testid="stButton"] button:hover p,
+    [data-testid="stButton"] button:hover span {
         color: #FFFFFF !important;
+    }
+
+    /* 半自動運用ボタン（パープル・白文字・影付き） */
+    .btn-auto [data-testid="stButton"] button {
+        background-color: #4F46E5 !important;
+        border: 1px solid #6366F1 !important;
         box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35) !important;
     }
-    .btn-auto button:hover {
-        background-color: #4338CA !important;
+    .btn-auto [data-testid="stButton"] button p,
+    .btn-auto [data-testid="stButton"] button span {
         color: #FFFFFF !important;
     }
-    .btn-auto button * {
-        color: #FFFFFF !important;
+    .btn-auto [data-testid="stButton"] button:hover {
+        background-color: #4338CA !important;
     }
 
     /* KPIカード */
@@ -200,13 +213,8 @@ st.markdown("""
         color: #10B981;
         font-weight: 600;
     }
-    .kpi-diff-red {
-        font-size: 0.85rem;
-        color: #EF4444;
-        font-weight: 600;
-    }
 
-    /* レースカードスタイル（本日のレース予測用） */
+    /* レースカードスタイル */
     .race-card {
         background: #141A29;
         border: 1px solid #1E273D;
@@ -273,12 +281,11 @@ def load_sheet_data():
         return None, None
     try:
         ss = gc.open(SS_NAME)
-        # 本日勝負レースシート取得
+        # 本日勝負レースシート
         try:
             ws_target = ss.worksheet("本日勝負レース")
             all_vals = ws_target.get_all_values()
             if all_vals and len(all_vals) > 1:
-                # 見送りレース境界の手前までを取得
                 target_rows = []
                 headers = all_vals[0]
                 for r in all_vals[1:]:
@@ -291,7 +298,7 @@ def load_sheet_data():
         except:
             df_target = pd.DataFrame()
 
-        # 本日全頭シート取得
+        # 本日全頭シート
         try:
             ws_today = ss.worksheet("本日")
             today_vals = ws_today.get_all_records()
@@ -306,7 +313,7 @@ def load_sheet_data():
 df_target, df_today = load_sheet_data()
 
 # ==========================================
-# 🗂️ サイドバー（AIモデル設定を削除）
+# 🗂️ サイドバー
 # ==========================================
 with st.sidebar:
     st.markdown("""
@@ -321,6 +328,7 @@ with st.sidebar:
         label_visibility="collapsed"
     )
 
+    # 画面左下に完全固定されるバッジ
     st.markdown("""
     <div class="sidebar-user">
         <div class="user-avatar">U</div>
@@ -345,11 +353,9 @@ if menu == "📊 ダッシュボード":
         """, unsafe_allow_html=True)
 
     with col_h_right1:
-        st.markdown('<div class="btn-update">', unsafe_allow_html=True)
         if st.button("🔄 データ更新", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
 
     with col_h_right2:
         st.markdown('<div class="btn-auto">', unsafe_allow_html=True)
@@ -457,7 +463,6 @@ elif menu == "📑 本日のレース予測":
     st.markdown('<div class="last-update">スプレッドシート「本日勝負レース」からリアルタイム取得中</div>', unsafe_allow_html=True)
 
     if df_target is not None and not df_target.empty:
-        # レースごとにグループ化してカード表示
         unique_races = df_target[['日付', '競馬場', 'レース名', '条件', '軸馬 (◎)']].drop_duplicates()
         for _, r in unique_races.iterrows():
             sub_df = df_target[(df_target['競馬場'] == r['競馬場']) & (df_target['レース名'] == r['レース名'])]
@@ -473,7 +478,6 @@ elif menu == "📑 本日のレース予測":
                 </div>
             """, unsafe_allow_html=True)
             
-            # 2つの買い目を横並び表示
             c_bet1, c_bet2 = st.columns(2)
             if len(sub_df) >= 2:
                 with c_bet1:
@@ -496,7 +500,7 @@ elif menu == "📑 本日のレース予測":
                     """, unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
     else:
-        st.info("スプレッドシートに本日の勝負レースデータがありません。Chromebookで判定スクリプトを実行するか、「🔄 データ更新」を押してください。")
+        st.info("スプレッドシートに本日の勝負レースデータがありません。")
 
 # ==========================================
 # 🗄️ 画面 3: 過去データ分析
@@ -525,4 +529,4 @@ elif menu == "📈 スプレッドシート連携":
             st.write("▼ 最新の取得データ一覧")
             st.dataframe(df_target, use_container_width=True)
     else:
-        st.error("🚨 スプレッドシートに接続できませんでした。Streamlit Secretsの設定を確認してください。")
+        st.error("🚨 スプレッドシートに接続できませんでした。")
