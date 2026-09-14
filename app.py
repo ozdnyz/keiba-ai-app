@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 カスタムCSS（タブ消失の完全修正・ダークテーマ）
+# 🎨 カスタムCSS（白飛び完全防御・ダークテーマ強制）
 # ==========================================
 st.markdown("""
 <style>
@@ -45,19 +45,68 @@ st.markdown("""
         padding: 0.5rem 0.5rem 1.5rem 0.5rem;
     }
 
-    /* 🌟 メニューテキストの表示を絶対保証するCSS */
-    [data-testid="stSidebar"] div[role="radiogroup"] label {
+    /* 🌟 メニューの丸ポッチを物理的に消滅させるCSS */
+    [data-testid="stSidebar"] div[role="radiogroup"] > label {
+        background-color: transparent !important;
+        padding: 8px 12px !important;
+        border-radius: 8px !important;
+        margin-bottom: 4px !important;
         cursor: pointer !important;
+        border: none !important;
     }
-    /* 非表示にする危険なコード(display: none)を全削除し、テキスト色を明示 */
+    [data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child {
+        width: 0px !important;
+        height: 0px !important;
+        opacity: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        position: absolute !important;
+        pointer-events: none !important;
+    }
     [data-testid="stSidebar"] div[role="radiogroup"] p {
         color: #94A3B8 !important;
         font-size: 1.05rem !important;
         font-weight: 600 !important;
+        margin-left: 5px !important;
     }
-    [data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] p,
-    [data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) p {
-        color: #FFFFFF !important; /* 選択時は純白 */
+    [data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"],
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) {
+        background-color: #1E2238 !important;
+        border-left: 3px solid #6366F1 !important;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] p,
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) p {
+        color: #FFFFFF !important;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:hover {
+        background-color: #161C2E !important;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:hover p {
+        color: #E2E8F0 !important;
+    }
+
+    /* 🌟 エクスパンダー（折りたたみ枠）の白飛び防止・ダーク化 */
+    [data-testid="stExpander"] details {
+        background-color: #141A29 !important;
+        border: 1px solid #1E273D !important;
+        border-radius: 8px !important;
+    }
+    [data-testid="stExpander"] summary {
+        background-color: #1E2238 !important;
+        padding: 12px 16px !important;
+        border-radius: 8px !important;
+    }
+    [data-testid="stExpander"] summary:hover {
+        background-color: #272C46 !important;
+    }
+    [data-testid="stExpander"] summary p {
+        color: #F3F4F6 !important;
+        font-weight: 600 !important;
+        font-size: 1.05rem !important;
+    }
+    [data-testid="stExpander"] div[data-testid="stExpanderDetails"] {
+        background-color: #0B0F19 !important;
+        padding: 16px !important;
     }
 
     /* システム稼働中バッジ（左下固定） */
@@ -256,7 +305,6 @@ def load_sheet_data():
         return None, None
     try:
         ss = gc.open(SS_NAME)
-        # 本日勝負レースシート
         try:
             ws_target = ss.worksheet("本日勝負レース")
             all_vals = ws_target.get_all_values()
@@ -273,7 +321,6 @@ def load_sheet_data():
         except:
             df_target = pd.DataFrame()
 
-        # 本日全頭シート
         try:
             ws_today = ss.worksheet("本日")
             today_vals = ws_today.get_all_records()
@@ -478,7 +525,7 @@ elif menu == "🎯 厳選勝負レース":
         st.info("スプレッドシートに最新の勝負レースデータがありません。")
 
 # ==========================================
-# 🏇 画面 3: 全レース出馬表
+# 🏇 画面 3: 全レース出馬表（HTMLカスタム描画版）
 # ==========================================
 elif menu == "🏇 全レース出馬表":
     st.markdown('<div class="main-title">全レース出馬表 ＆ AI評価印</div>', unsafe_allow_html=True)
@@ -506,38 +553,59 @@ elif menu == "🏇 全レース出馬表":
                     
                     with st.expander(f"🏁 {venue} {rname} （{cond}）"):
                         
-                        disp_cols = ['馬番', '評価', '馬名', '単勝オッズ', '人気', 'RL', 'CL', 'AIスコア', 'AI判定']
+                        disp_cols = ['馬番', '印', '馬名', '単勝オッズ', '人気', 'RL', 'CL', 'AIスコア', 'AI判定']
+                        
+                        # カラム名を統一（スプレッドシートの「評価」を「印」として扱う）
+                        if '評価' in sub_df.columns:
+                            sub_df = sub_df.rename(columns={'評価': '印'})
+                        
                         actual_cols = [c for c in disp_cols if c in sub_df.columns]
                         display_df = sub_df[actual_cols].copy()
-                        display_df = display_df.rename(columns={'評価': '印'})
                         
                         display_df['馬番'] = pd.to_numeric(display_df['馬番'], errors='coerce')
                         display_df = display_df.sort_values('馬番')
                         
-                        # 🌟 余分な小数点以下をカットするフォーマット指定
-                        format_dict = {}
-                        if '単勝オッズ' in display_df.columns: format_dict['単勝オッズ'] = "{:.1f}"
-                        if 'AIスコア' in display_df.columns: format_dict['AIスコア'] = "{:.2f}"
-                        if 'RL' in display_df.columns: format_dict['RL'] = "{:.0f}"
-                        if 'CL' in display_df.columns: format_dict['CL'] = "{:.0f}"
-
-                        def color_marks(val):
-                            if val == '◎': return 'color: #EF4444; font-weight: 900; font-size: 16px;'
-                            elif val == '◯': return 'color: #3B82F6; font-weight: 900; font-size: 16px;'
-                            elif val == '▲': return 'color: #10B981; font-weight: 900; font-size: 16px;'
-                            elif val == '△': return 'color: #F59E0B; font-weight: 900; font-size: 16px;'
-                            return 'color: #94A3B8;'
-
-                        if hasattr(display_df.style, 'map'):
-                            styled_df = display_df.style.map(color_marks, subset=['印']).format(format_dict, na_rep="-")
-                        else:
-                            styled_df = display_df.style.applymap(color_marks, subset=['印']).format(format_dict, na_rep="-")
+                        # 🌟 Pythonで直接HTMLテーブルを構築（白飛びを完全に防ぎ、デザインを強制する）
+                        html_table = """
+                        <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #1E273D;">
+                        <table style="width:100%; border-collapse: collapse; text-align: center; color: #F3F4F6; font-size: 0.95rem; background-color: #141A29;">
+                            <thead>
+                                <tr style="background-color: #0E1322; color: #94A3B8; border-bottom: 2px solid #1E273D;">
+                        """
+                        for col in actual_cols:
+                            html_table += f"<th style='padding: 12px 8px; font-weight: 600;'>{col}</th>"
+                        html_table += "</tr></thead><tbody>"
                         
-                        st.dataframe(
-                            styled_df,
-                            use_container_width=True,
-                            hide_index=True
-                        )
+                        for _, row in display_df.iterrows():
+                            html_table += "<tr style='border-bottom: 1px solid #1E273D;'>"
+                            for col in actual_cols:
+                                val = row[col]
+                                
+                                # 印のカスタムカラーリング
+                                if col == '印':
+                                    if val == '◎': val = "<span style='color: #EF4444; font-weight: 900; font-size: 1.1rem;'>◎</span>"
+                                    elif val == '◯': val = "<span style='color: #3B82F6; font-weight: 900; font-size: 1.1rem;'>◯</span>"
+                                    elif val == '▲': val = "<span style='color: #10B981; font-weight: 900; font-size: 1.1rem;'>▲</span>"
+                                    elif val == '△': val = "<span style='color: #F59E0B; font-weight: 900; font-size: 1.1rem;'>△</span>"
+                                
+                                # 数値のフォーマット（無駄な0をカット）
+                                if pd.notna(val) and val != "":
+                                    try:
+                                        if col == '単勝オッズ': val = f"{float(val):.1f}"
+                                        elif col == 'AIスコア': val = f"{float(val):.2f}"
+                                        elif col in ['RL', 'CL', '人気', '馬番']: val = f"{int(float(val))}"
+                                    except:
+                                        pass
+                                else:
+                                    val = "-"
+                                
+                                align = "left" if col == "馬名" else "center"
+                                html_table += f"<td style='padding: 10px 8px; text-align: {align};'>{val}</td>"
+                            html_table += "</tr>"
+                        html_table += "</tbody></table></div>"
+                        
+                        # 生成した完璧なHTMLをそのまま描画
+                        st.markdown(html_table, unsafe_allow_html=True)
     else:
         st.info("スプレッドシートに最新の全頭データがありません。")
 
