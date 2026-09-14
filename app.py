@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 カスタムCSS
+# 🎨 カスタムCSS（白飛び完全防御・ダークテーマ強制）
 # ==========================================
 st.markdown("""
 <style>
@@ -45,7 +45,7 @@ st.markdown("""
         padding: 0.5rem 0.5rem 1.5rem 0.5rem;
     }
 
-    /* メニューの丸ポッチ消去 */
+    /* メニューの丸ポッチを物理的に消滅させるCSS */
     [data-testid="stSidebar"] div[role="radiogroup"] > label {
         background-color: transparent !important;
         padding: 8px 12px !important;
@@ -166,7 +166,7 @@ st.markdown("""
         margin-bottom: 1.2rem;
     }
 
-    /* ボタン */
+    /* ボタンの白抜き防止 */
     button[kind="secondary"], 
     button[kind="primary"],
     [data-testid="stButton"] button {
@@ -302,9 +302,10 @@ def get_gspread_client():
 def load_sheet_data():
     gc = get_gspread_client()
     if not gc:
-        return None, None
+        return None, None, None
     try:
         ss = gc.open(SS_NAME)
+        # 本日勝負レース
         try:
             ws_target = ss.worksheet("本日勝負レース")
             all_vals = ws_target.get_all_values()
@@ -321,6 +322,7 @@ def load_sheet_data():
         except:
             df_target = pd.DataFrame()
 
+        # 本日全頭
         try:
             ws_today = ss.worksheet("本日")
             today_vals = ws_today.get_all_records()
@@ -328,11 +330,19 @@ def load_sheet_data():
         except:
             df_today = pd.DataFrame()
 
-        return df_target, df_today
-    except Exception as e:
-        return None, None
+        # 日次収支
+        try:
+            ws_daily = ss.worksheet("日次収支")
+            daily_vals = ws_daily.get_all_records()
+            df_daily = pd.DataFrame(daily_vals)
+        except:
+            df_daily = pd.DataFrame()
 
-df_target, df_today = load_sheet_data()
+        return df_target, df_today, df_daily
+    except Exception as e:
+        return None, None, None
+
+df_target, df_today, df_daily_log = load_sheet_data()
 
 # ==========================================
 # 🗂️ サイドバー メニュー構築
@@ -346,7 +356,7 @@ with st.sidebar:
 
     menu = st.radio(
         "",
-        ["📊 ダッシュボード", "🎯 厳選勝負レース", "🏇 全レース出馬表", "💻 ターミナル操作マニュアル", "🗄️ 過去データ分析", "📈 スプレッドシート連携"],
+        ["📊 ダッシュボード", "🎯 厳選勝負レース", "🏇 全レース出馬表", "💰 収支入力・管理", "💻 ターミナル操作マニュアル", "🗄️ 過去データ分析", "📈 スプレッドシート連携"],
         label_visibility="collapsed"
     )
 
@@ -379,6 +389,23 @@ if menu == "📊 ダッシュボード":
             st.rerun()
     st.write("")
 
+    # 実収支データからKPIを計算
+    ai_roi, usr_roi = 0.0, 0.0
+    if df_daily_log is not None and not df_daily_log.empty and 'AI投資額' in df_daily_log.columns:
+        df_daily_calc = df_daily_log.copy()
+        df_daily_calc['AI投資額'] = pd.to_numeric(df_daily_calc['AI投資額'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+        df_daily_calc['AI回収額'] = pd.to_numeric(df_daily_calc['AI回収額'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+        df_daily_calc['ユーザー投資額'] = pd.to_numeric(df_daily_calc['ユーザー投資額'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+        df_daily_calc['ユーザー回収額'] = pd.to_numeric(df_daily_calc['ユーザー回収額'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+
+        ai_tot_inv = df_daily_calc['AI投資額'].sum()
+        ai_tot_ret = df_daily_calc['AI回収額'].sum()
+        usr_tot_inv = df_daily_calc['ユーザー投資額'].sum()
+        usr_tot_ret = df_daily_calc['ユーザー回収額'].sum()
+
+        ai_roi = (ai_tot_ret / ai_tot_inv * 100) if ai_tot_inv > 0 else 0.0
+        usr_roi = (usr_tot_ret / usr_tot_inv * 100) if usr_tot_inv > 0 else 0.0
+
     today_target_count = 0
     today_race_count = 0
     latest_date_str = ""
@@ -398,23 +425,26 @@ if menu == "📊 ダッシュボード":
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown("""
+        ai_disp = f"{ai_roi:.1f}" if ai_roi > 0 else "128.7"
+        sub_text = "実測累計" if ai_roi > 0 else "5年検証"
+        st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-title">AI全買い 回収率 (5年検証)</div>
+            <div class="kpi-title">AI理論回収率 ({sub_text})</div>
             <div class="kpi-value-row">
-                <span class="kpi-value">128.7</span><span class="kpi-sub">%</span>
-                <span class="kpi-diff-green">↑ 目標達成</span>
+                <span class="kpi-value">{ai_disp}</span><span class="kpi-sub">%</span>
+                <span class="kpi-diff-green">● 1点100円</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
     with c2:
-        st.markdown("""
+        usr_disp = f"{usr_roi:.1f}" if usr_roi > 0 else "-"
+        st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-title">実力(RL)×適性(CL) 判定</div>
+            <div class="kpi-title">あなたの実回収率 (全期間)</div>
             <div class="kpi-value-row">
-                <span class="kpi-value">70 : 30</span>
-                <span class="kpi-diff-green">● 黄金比率</span>
+                <span class="kpi-value">{usr_disp}</span><span class="kpi-sub">%</span>
+                <span class="kpi-diff-green">● 実戦成績</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -441,25 +471,51 @@ if menu == "📊 ダッシュボード":
 
     st.write("")
 
-    col_chart_title, col_chart_select = st.columns([7, 2])
-    with col_chart_title:
-        st.markdown('<div style="font-size:1.15rem; font-weight:700; color:#FFFFFF;">回収率推移（実績 vs AI予測）</div>', unsafe_allow_html=True)
-    with col_chart_select:
-        period = st.selectbox("", ["直近10日間", "直近30日間", "今年度全期間"], label_visibility="collapsed")
-
-    dates = [f"9/{i}" for i in range(5, 15)]
-    ai_roi = [108.0, 109.5, 115.0, 111.0, 114.5, 120.5, 118.0, 122.5, 124.2, 128.7]
+    # 回収率推移グラフ（日次収支データ連動）
+    st.markdown('<div style="font-size:1.15rem; font-weight:700; color:#FFFFFF;">回収率推移（AI理論値 vs あなたの実績）</div>', unsafe_allow_html=True)
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=dates,
-        y=ai_roi,
-        name="AI判定通り全買い (期待値1.0超)",
-        mode="lines+markers",
-        line=dict(color="#6366F1", width=3, shape="spline"),
-        marker=dict(size=7, color="#6366F1", line=dict(color="#FFFFFF", width=1.5)),
-        hoverinfo="x+y"
-    ))
+    if df_daily_log is not None and not df_daily_log.empty and 'AI投資額' in df_daily_log.columns:
+        df_plot = df_daily_log.copy()
+        df_plot['AI投資額'] = pd.to_numeric(df_plot['AI投資額'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+        df_plot['AI回収額'] = pd.to_numeric(df_plot['AI回収額'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+        df_plot['ユーザー投資額'] = pd.to_numeric(df_plot['ユーザー投資額'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+        df_plot['ユーザー回収額'] = pd.to_numeric(df_plot['ユーザー回収額'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+
+        df_plot['AI_CUM_INV'] = df_plot['AI投資額'].cumsum()
+        df_plot['AI_CUM_RET'] = df_plot['AI回収額'].cumsum()
+        df_plot['USR_CUM_INV'] = df_plot['ユーザー投資額'].cumsum()
+        df_plot['USR_CUM_RET'] = df_plot['ユーザー回収額'].cumsum()
+
+        df_plot['AI_ROI'] = np.where(df_plot['AI_CUM_INV'] > 0, (df_plot['AI_CUM_RET'] / df_plot['AI_CUM_INV']) * 100, 100.0)
+        df_plot['USR_ROI'] = np.where(df_plot['USR_CUM_INV'] > 0, (df_plot['USR_CUM_RET'] / df_plot['USR_CUM_INV']) * 100, 100.0)
+
+        dates = df_plot['日付'].tolist()
+        fig.add_trace(go.Scatter(
+            x=dates, y=df_plot['AI_ROI'],
+            name="AI理論回収率 (1点100円)",
+            mode="lines+markers",
+            line=dict(color="#6366F1", width=3, shape="spline"),
+            marker=dict(size=7, color="#6366F1", line=dict(color="#FFFFFF", width=1.5))
+        ))
+        fig.add_trace(go.Scatter(
+            x=dates, y=df_plot['USR_ROI'],
+            name="あなたの実回収率",
+            mode="lines+markers",
+            line=dict(color="#10B981", width=3, shape="spline"),
+            marker=dict(size=7, color="#10B981", line=dict(color="#FFFFFF", width=1.5))
+        ))
+    else:
+        # 初回データがない場合のデモ推移
+        dates = [f"9/{i}" for i in range(5, 15)]
+        ai_roi_demo = [108.0, 109.5, 115.0, 111.0, 114.5, 120.5, 118.0, 122.5, 124.2, 128.7]
+        fig.add_trace(go.Scatter(
+            x=dates, y=ai_roi_demo,
+            name="AI判定通り全買い (検証モデル)",
+            mode="lines+markers",
+            line=dict(color="#6366F1", width=3, shape="spline"),
+            marker=dict(size=7, color="#6366F1", line=dict(color="#FFFFFF", width=1.5))
+        ))
 
     fig.update_layout(
         height=340,
@@ -469,7 +525,7 @@ if menu == "📊 ダッシュボード":
         font=dict(color="#94A3B8", size=12),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=12, color="#CBD5E1")),
         xaxis=dict(showgrid=True, gridcolor="#1E273D", zeroline=False),
-        yaxis=dict(showgrid=True, gridcolor="#1E273D", zeroline=False, ticksuffix="%", range=[105, 135]),
+        yaxis=dict(showgrid=True, gridcolor="#1E273D", zeroline=False, ticksuffix="%"),
         hovermode="x unified"
     )
     st.plotly_chart(fig, use_container_width=True)
@@ -525,7 +581,7 @@ elif menu == "🎯 厳選勝負レース":
         st.info("スプレッドシートに最新の勝負レースデータがありません。")
 
 # ==========================================
-# 🏇 画面 3: 全レース出馬表
+# 🏇 画面 3: 全レース出馬表（HTMLカスタム描画版）
 # ==========================================
 elif menu == "🏇 全レース出馬表":
     st.markdown('<div class="main-title">全レース出馬表 ＆ AI評価印</div>', unsafe_allow_html=True)
@@ -561,6 +617,7 @@ elif menu == "🏇 全レース出馬表":
                         display_df['馬番'] = pd.to_numeric(display_df['馬番'], errors='coerce')
                         display_df = display_df.sort_values('馬番')
                         
+                        # Pythonで直接HTMLテーブルを構築（完全ダークテーマ）
                         html_table = """
                         <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #1E273D;">
                         <table style="width:100%; border-collapse: collapse; text-align: center; color: #F3F4F6; font-size: 0.95rem; background-color: #141A29;">
@@ -601,13 +658,63 @@ elif menu == "🏇 全レース出馬表":
         st.info("スプレッドシートに最新の全頭データがありません。")
 
 # ==========================================
-# 💻 画面 4: ターミナル操作マニュアル（★check.py追加）
+# 💰 画面 4: 収支入力・管理（★新設）
+# ==========================================
+elif menu == "💰 収支入力・管理":
+    st.markdown('<div class="main-title">日次実収支の記録</div>', unsafe_allow_html=True)
+    st.markdown('<div class="last-update">一日の終わりに、今日の総購入額と総払戻額を入力して保存してください</div>', unsafe_allow_html=True)
+
+    with st.form("shushi_form"):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            target_date = st.date_input("🗓️ 競馬開催日", datetime.now())
+        with col2:
+            usr_inv = st.number_input("💸 今日の総購入額 (円)", min_value=0, value=0, step=100)
+        with col3:
+            usr_ret = st.number_input("💰 今日の総払戻額 (円)", min_value=0, value=0, step=100)
+        
+        submit = st.form_submit_button("💾 スプレッドシートに保存")
+        
+        if submit:
+            gc = get_gspread_client()
+            if gc:
+                date_str = target_date.strftime("%Y/%m/%d")
+                try:
+                    ss = gc.open(SS_NAME)
+                    try:
+                        ws = ss.worksheet("日次収支")
+                    except:
+                        ws = ss.add_worksheet(title="日次収支", rows="500", cols="10")
+                        ws.append_row(["日付", "AI投資額", "AI回収額", "ユーザー投資額", "ユーザー回収額"])
+
+                    records = ws.get_all_values()
+                    found_row = -1
+                    for i, row in enumerate(records):
+                        if len(row) > 0 and row[0] == date_str:
+                            found_row = i + 1
+                            break
+                    
+                    if found_row != -1:
+                        ws.update_cell(found_row, 4, usr_inv)
+                        ws.update_cell(found_row, 5, usr_ret)
+                        st.success(f"✅ {date_str} の実収支を更新しました！（投資: {usr_inv:,}円 / 回収: {usr_ret:,}円）")
+                    else:
+                        ws.append_row([date_str, 0, 0, usr_inv, usr_ret])
+                        st.success(f"✅ {date_str} の実収支を新規保存しました！（投資: {usr_inv:,}円 / 回収: {usr_ret:,}円）")
+                    
+                    st.cache_data.clear()
+                except Exception as e:
+                    st.error(f"保存エラー: {e}")
+            else:
+                st.error("🚨 スプレッドシートの認証に失敗しました。")
+
+# ==========================================
+# 💻 画面 5: ターミナル操作マニュアル
 # ==========================================
 elif menu == "💻 ターミナル操作マニュアル":
     st.markdown('<div class="main-title">Chromebook ターミナル操作マニュアル</div>', unsafe_allow_html=True)
     st.markdown('<div class="last-update">各枠右上のコピーボタンを押してターミナルに貼り付けてください</div>', unsafe_allow_html=True)
 
-    # 1. 朝のリアルタイム予想実行
     st.markdown("""
     <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
         <h4 style="color:#FFFFFF; margin-top:0;">⚡ 1. 本日のリアルタイム予想実行（全レース巡回）</h4>
@@ -618,7 +725,6 @@ elif menu == "💻 ターミナル操作マニュアル":
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 run.py", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 2. 🌟 1レースピンポイント分析（check.py）
     st.markdown("""
     <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
         <h4 style="color:#FFFFFF; margin-top:0;">🎯 2. 【1レースピンポイント分析】URL不要・会場と数字だけで分析</h4>
@@ -631,7 +737,6 @@ elif menu == "💻 ターミナル操作マニュアル":
     st.caption("※「中山 11」の部分を「阪神 10」や「中京 11」のように自由に変えて実行できます。")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 3. 過去日テスト
     st.markdown("""
     <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
         <h4 style="color:#FFFFFF; margin-top:0;">📅 3. 過去日付のシミュレーション実行</h4>
@@ -642,7 +747,6 @@ elif menu == "💻 ターミナル操作マニュアル":
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 run.py 20260912 20260913", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 4. タイマーログ確認
     st.markdown("""
     <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
         <h4 style="color:#FFFFFF; margin-top:0;">⏰ 4. 自動タイマー（朝9時実行）のログ確認</h4>
@@ -653,7 +757,6 @@ elif menu == "💻 ターミナル操作マニュアル":
     st.code("cat /home/ozdnyzww1/keiba_cron.log", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 5. 緊急停止・更地化
     st.markdown("""
     <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
         <h4 style="color:#FFFFFF; margin-top:0;">🧹 5. メモリ解放 ＆ 停止コマンド（緊急用）</h4>
@@ -665,7 +768,7 @@ elif menu == "💻 ターミナル操作マニュアル":
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
-# 🗄️ 画面 5: 過去データ分析
+# 🗄️ 画面 6: 過去データ分析
 # ==========================================
 elif menu == "🗄️ 過去データ分析":
     st.markdown('<div class="main-title">過去データバックテスト分析</div>', unsafe_allow_html=True)
@@ -680,7 +783,7 @@ elif menu == "🗄️ 過去データ分析":
     """)
 
 # ==========================================
-# 📈 画面 6: スプレッドシート連携
+# 📈 画面 7: スプレッドシート連携
 # ==========================================
 elif menu == "📈 スプレッドシート連携":
     st.markdown('<div class="main-title">Google スプレッドシート連携ステータス</div>', unsafe_allow_html=True)
@@ -688,7 +791,7 @@ elif menu == "📈 スプレッドシート連携":
     if gc:
         st.success(f"🔐 連携成功: 「{SS_NAME}」と正常にリアルタイム同期しています。")
         if df_target is not None and not df_target.empty:
-            st.write("▼ 最新の取得データ一覧")
+            st.write("▼ 最新の取得データ一覧（本日勝負レース）")
             st.dataframe(df_target, use_container_width=True)
     else:
         st.error("🚨 スプレッドシートに接続できませんでした。")
