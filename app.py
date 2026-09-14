@@ -166,7 +166,7 @@ st.markdown("""
         margin-bottom: 1.2rem;
     }
 
-    /* ボタンの白抜き防止 */
+    /* 通常ボタンの白抜き防止 */
     button[kind="secondary"], 
     button[kind="primary"],
     [data-testid="stButton"] button {
@@ -187,6 +187,67 @@ st.markdown("""
     }
     [data-testid="stButton"] button:hover p,
     [data-testid="stButton"] button:hover span {
+        color: #FFFFFF !important;
+    }
+
+    /* 🌟 フォーム・入力枠・ラベルの視認性向上CSS */
+    [data-testid="stForm"] {
+        background-color: #141A29 !important;
+        border: 1px solid #1E273D !important;
+        border-radius: 12px !important;
+        padding: 1.5rem !important;
+    }
+    /* ラベルの文字を純白・太字にしてくっきり表示 */
+    [data-testid="stForm"] label,
+    [data-testid="stWidgetLabel"] label,
+    [data-testid="stWidgetLabel"] p {
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
+        font-size: 0.95rem !important;
+    }
+    /* 日付・数値入力欄の背景をダーク化＆白文字 */
+    [data-testid="stForm"] input,
+    [data-testid="stDateInput"] input,
+    [data-testid="stNumberInput"] input {
+        background-color: #0E1322 !important;
+        color: #FFFFFF !important;
+        border: 1px solid #2B354F !important;
+        border-radius: 8px !important;
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+    }
+    /* 数値入力欄の +/- ボタン */
+    [data-testid="stNumberInput"] button {
+        background-color: #1E273D !important;
+        color: #CBD5E1 !important;
+        border: 1px solid #2B354F !important;
+    }
+    [data-testid="stNumberInput"] button:hover {
+        background-color: #273352 !important;
+        color: #FFFFFF !important;
+    }
+
+    /* 🌟 フォーム保存ボタンの白抜き完全防止（パープル＆純白太字） */
+    [data-testid="stFormSubmitButton"] button {
+        background-color: #4F46E5 !important;
+        color: #FFFFFF !important;
+        border: 1px solid #6366F1 !important;
+        border-radius: 8px !important;
+        padding: 0.65rem 1.6rem !important;
+        font-weight: 700 !important;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35) !important;
+    }
+    [data-testid="stFormSubmitButton"] button p,
+    [data-testid="stFormSubmitButton"] button span {
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
+    }
+    [data-testid="stFormSubmitButton"] button:hover {
+        background-color: #4338CA !important;
+        border-color: #818CF8 !important;
+    }
+    [data-testid="stFormSubmitButton"] button:hover p,
+    [data-testid="stFormSubmitButton"] button:hover span {
         color: #FFFFFF !important;
     }
 
@@ -471,7 +532,7 @@ if menu == "📊 ダッシュボード":
 
     st.write("")
 
-    # 回収率推移グラフ（日次収支データ連動）
+    # 回収率推移グラフ
     st.markdown('<div style="font-size:1.15rem; font-weight:700; color:#FFFFFF;">回収率推移（AI理論値 vs あなたの実績）</div>', unsafe_allow_html=True)
 
     fig = go.Figure()
@@ -506,7 +567,6 @@ if menu == "📊 ダッシュボード":
             marker=dict(size=7, color="#10B981", line=dict(color="#FFFFFF", width=1.5))
         ))
     else:
-        # 初回データがない場合のデモ推移
         dates = [f"9/{i}" for i in range(5, 15)]
         ai_roi_demo = [108.0, 109.5, 115.0, 111.0, 114.5, 120.5, 118.0, 122.5, 124.2, 128.7]
         fig.add_trace(go.Scatter(
@@ -617,7 +677,6 @@ elif menu == "🏇 全レース出馬表":
                         display_df['馬番'] = pd.to_numeric(display_df['馬番'], errors='coerce')
                         display_df = display_df.sort_values('馬番')
                         
-                        # Pythonで直接HTMLテーブルを構築（完全ダークテーマ）
                         html_table = """
                         <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #1E273D;">
                         <table style="width:100%; border-collapse: collapse; text-align: center; color: #F3F4F6; font-size: 0.95rem; background-color: #141A29;">
@@ -658,7 +717,7 @@ elif menu == "🏇 全レース出馬表":
         st.info("スプレッドシートに最新の全頭データがありません。")
 
 # ==========================================
-# 💰 画面 4: 収支入力・管理（★新設）
+# 💰 画面 4: 収支入力・管理（視認性向上版）
 # ==========================================
 elif menu == "💰 収支入力・管理":
     st.markdown('<div class="main-title">日次実収支の記録</div>', unsafe_allow_html=True)
@@ -673,6 +732,7 @@ elif menu == "💰 収支入力・管理":
         with col3:
             usr_ret = st.number_input("💰 今日の総払戻額 (円)", min_value=0, value=0, step=100)
         
+        st.write("")
         submit = st.form_submit_button("💾 スプレッドシートに保存")
         
         if submit:
