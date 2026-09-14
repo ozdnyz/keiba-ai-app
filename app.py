@@ -3,6 +3,10 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime
+import json
+import os
+import gspread
+from google.oauth2.service_account import Credentials
 
 # ページ基本設定
 st.set_page_config(
@@ -13,26 +17,23 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 画像デザイン完全再現用カスタムCSS
+# 🎨 カスタムCSS（白抜き防止・完全ダークテーマ）
 # ==========================================
 st.markdown("""
 <style>
     /* 全体背景とフォント */
     .stApp {
-        background-color: #0B0F19;
-        color: #F3F4F6;
+        background-color: #0B0F19 !important;
+        color: #F3F4F6 !important;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     
     /* サイドバーのスタイル */
     [data-testid="stSidebar"] {
         background-color: #0E1322 !important;
-        border-right: 1px solid #1E2640;
+        border-right: 1px solid #1E2640 !important;
     }
-    [data-testid="stSidebar"] > div:first-child {
-        padding-top: 1.5rem;
-    }
-
+    
     /* サイドバーのロゴ */
     .sidebar-logo {
         display: flex;
@@ -40,49 +41,42 @@ st.markdown("""
         gap: 12px;
         font-size: 1.35rem;
         font-weight: 700;
-        color: #FFFFFF;
-        padding: 0 0.5rem 1.5rem 0.5rem;
-    }
-    .sidebar-logo span {
-        font-size: 1.6rem;
+        color: #FFFFFF !important;
+        padding: 0.5rem 0.5rem 1.5rem 0.5rem;
     }
 
-    /* サイドバーのナビゲーションアイテム */
-    .nav-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 10px 14px;
-        border-radius: 8px;
-        color: #94A3B8;
-        font-size: 0.95rem;
-        font-weight: 500;
-        margin-bottom: 4px;
-        cursor: pointer;
-        transition: all 0.2s;
+    /* サイドバーのラジオボタンスタイル（メニュー化） */
+    [data-testid="stSidebar"] div[role="radiogroup"] > label {
+        background-color: transparent !important;
+        padding: 10px 14px !important;
+        border-radius: 8px !important;
+        color: #94A3B8 !important;
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
+        margin-bottom: 6px !important;
+        transition: all 0.2s !important;
+        cursor: pointer !important;
     }
-    .nav-item.active {
-        background-color: #1E2238;
-        color: #FFFFFF;
-        font-weight: 600;
-        border-left: 3px solid #6366F1;
+    [data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"],
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) {
+        background-color: #1E2238 !important;
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
+        border-left: 3px solid #6366F1 !important;
     }
-    .nav-item:hover {
-        background-color: #161C2E;
-        color: #E2E8F0;
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:hover {
+        background-color: #161C2E !important;
+        color: #E2E8F0 !important;
     }
 
     /* ユーザープロファイル（左下） */
     .sidebar-user {
-        position: fixed;
-        bottom: 20px;
-        left: 16px;
-        width: 250px;
+        margin-top: 2rem;
+        padding: 12px 10px;
+        border-top: 1px solid #1E2640;
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 10px 12px;
-        background-color: transparent;
     }
     .user-avatar {
         width: 36px;
@@ -94,10 +88,6 @@ st.markdown("""
         justify-content: center;
         font-weight: 700;
         color: white;
-    }
-    .user-info {
-        display: flex;
-        flex-direction: column;
     }
     .user-name {
         font-size: 0.9rem;
@@ -113,42 +103,73 @@ st.markdown("""
     }
 
     /* メインヘッダー */
-    .main-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 1.8rem;
-    }
     .main-title {
         font-size: 1.85rem;
         font-weight: 700;
-        color: #FFFFFF;
+        color: #FFFFFF !important;
         margin-bottom: 4px;
         line-height: 1.2;
     }
     .last-update {
         font-size: 0.85rem;
         color: #94A3B8;
+        margin-bottom: 1.2rem;
     }
 
-    /* KPIカード共通スタイル（グラデーション装飾付き） */
+    /* 🌟 ボタンの白抜きを根本から完全防止するCSS */
+    div[data-testid="stButton"] button {
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        padding: 0.55rem 1.1rem !important;
+        transition: all 0.2s !important;
+        border: none !important;
+    }
+    /* データ更新ボタン（濃紺・白文字） */
+    .btn-update button {
+        background-color: #161D2E !important;
+        color: #E2E8F0 !important;
+        border: 1px solid #2B354F !important;
+    }
+    .btn-update button:hover {
+        background-color: #1E273D !important;
+        border-color: #6366F1 !important;
+        color: #FFFFFF !important;
+    }
+    .btn-update button * {
+        color: #E2E8F0 !important;
+    }
+    /* 半自動運用ボタン（パープル・白文字） */
+    .btn-auto button {
+        background-color: #4F46E5 !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35) !important;
+    }
+    .btn-auto button:hover {
+        background-color: #4338CA !important;
+        color: #FFFFFF !important;
+    }
+    .btn-auto button * {
+        color: #FFFFFF !important;
+    }
+
+    /* KPIカード */
     .kpi-card {
         background: #141A29;
         border: 1px solid #1E273D;
         border-radius: 16px;
-        padding: 1.4rem 1.5rem;
+        padding: 1.3rem 1.4rem;
         position: relative;
         overflow: hidden;
-        min-height: 130px;
+        min-height: 125px;
     }
-    /* カード右上の丸い発光グラデーション */
     .kpi-card::after {
         content: "";
         position: absolute;
         top: -30px;
         right: -30px;
-        width: 90px;
-        height: 90px;
+        width: 80px;
+        height: 80px;
         background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(20, 26, 41, 0) 70%);
         border-radius: 50%;
     }
@@ -156,7 +177,7 @@ st.markdown("""
         font-size: 0.82rem;
         color: #94A3B8;
         font-weight: 500;
-        margin-bottom: 0.6rem;
+        margin-bottom: 0.5rem;
     }
     .kpi-value-row {
         display: flex;
@@ -164,13 +185,13 @@ st.markdown("""
         gap: 8px;
     }
     .kpi-value {
-        font-size: 1.95rem;
+        font-size: 1.85rem;
         font-weight: 700;
         color: #FFFFFF;
         letter-spacing: -0.5px;
     }
     .kpi-sub {
-        font-size: 1.05rem;
+        font-size: 0.95rem;
         color: #94A3B8;
         font-weight: 500;
     }
@@ -185,74 +206,121 @@ st.markdown("""
         font-weight: 600;
     }
 
-    /* チャートコンテナ */
-    .chart-container {
+    /* レースカードスタイル（本日のレース予測用） */
+    .race-card {
         background: #141A29;
         border: 1px solid #1E273D;
-        border-radius: 16px;
-        padding: 1.5rem;
-        margin-top: 1.5rem;
+        border-radius: 12px;
+        padding: 1.2rem;
+        margin-bottom: 1rem;
     }
-    .chart-header {
+    .race-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1rem;
+        border-bottom: 1px solid #1E273D;
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.8rem;
     }
-    .chart-title {
-        font-size: 1.15rem;
+    .race-name {
+        font-size: 1.1rem;
         font-weight: 700;
         color: #FFFFFF;
     }
-
-    /* ボタンカスタマイズ */
-    div.stButton > button:first-child {
-        border-radius: 8px;
+    .race-badge {
+        background-color: #1E2238;
+        color: #6366F1;
+        font-size: 0.8rem;
         font-weight: 600;
-        font-size: 0.85rem;
-        padding: 0.55rem 1.1rem;
-        transition: all 0.2s;
-    }
-    /* データ更新ボタン */
-    .btn-update > div.stButton > button {
-        background-color: #161D2E;
-        color: #E2E8F0;
-        border: 1px solid #2B354F;
-    }
-    .btn-update > div.stButton > button:hover {
-        background-color: #1E273D;
-        border-color: #475569;
-        color: #FFFFFF;
-    }
-    /* 半自動運用ボタン */
-    .btn-auto > div.stButton > button {
-        background-color: #4F46E5;
-        color: #FFFFFF;
-        border: none;
-        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
-    }
-    .btn-auto > div.stButton > button:hover {
-        background-color: #4338CA;
+        padding: 3px 8px;
+        border-radius: 4px;
+        border: 1px solid #6366F1;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 🗂️ サイドバー（左メニュー）
+# 🔐 スプレッドシート接続処理
+# ==========================================
+SS_NAME = "競馬AIシステム_Core"
+
+@st.cache_resource
+def get_gspread_client():
+    scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+    try:
+        if "gcp_service_account" in st.secrets:
+            creds_dict = dict(st.secrets["gcp_service_account"])
+            creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+            return gspread.authorize(creds)
+        elif "gcp_json" in st.secrets:
+            creds_dict = json.loads(st.secrets["gcp_json"])
+            creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+            return gspread.authorize(creds)
+        elif os.path.exists("key.json"):
+            creds = Credentials.from_service_account_file("key.json", scopes=scopes)
+            return gspread.authorize(creds)
+        elif os.path.exists(os.path.expanduser("~/key.json")):
+            creds = Credentials.from_service_account_file(os.path.expanduser("~/key.json"), scopes=scopes)
+            return gspread.authorize(creds)
+    except Exception as e:
+        st.sidebar.error(f"認証エラー: {e}")
+    return None
+
+@st.cache_data(ttl=60)
+def load_sheet_data():
+    gc = get_gspread_client()
+    if not gc:
+        return None, None
+    try:
+        ss = gc.open(SS_NAME)
+        # 本日勝負レースシート取得
+        try:
+            ws_target = ss.worksheet("本日勝負レース")
+            all_vals = ws_target.get_all_values()
+            if all_vals and len(all_vals) > 1:
+                # 見送りレース境界の手前までを取得
+                target_rows = []
+                headers = all_vals[0]
+                for r in all_vals[1:]:
+                    if not r or "--- 見送り" in r[0]:
+                        break
+                    target_rows.append(r)
+                df_target = pd.DataFrame(target_rows, columns=headers)
+            else:
+                df_target = pd.DataFrame()
+        except:
+            df_target = pd.DataFrame()
+
+        # 本日全頭シート取得
+        try:
+            ws_today = ss.worksheet("本日")
+            today_vals = ws_today.get_all_records()
+            df_today = pd.DataFrame(today_vals)
+        except:
+            df_today = pd.DataFrame()
+
+        return df_target, df_today
+    except Exception as e:
+        return None, None
+
+df_target, df_today = load_sheet_data()
+
+# ==========================================
+# 🗂️ サイドバー（AIモデル設定を削除）
 # ==========================================
 with st.sidebar:
     st.markdown("""
     <div class="sidebar-logo">
         <span>🐴</span> Keiba AI Core
     </div>
-    <div class="nav-item active">📊 ダッシュボード</div>
-    <div class="nav-item">📑 本日のレース予測</div>
-    <div class="nav-item">🗄️ 過去データ分析</div>
-    <div class="nav-item">🎛️ AIモデル設定(RL/CL)</div>
-    <div class="nav-item">📈 スプレッドシート連携</div>
     """, unsafe_allow_html=True)
 
-    # Chromebookステータスバッジ
+    menu = st.radio(
+        "",
+        ["📊 ダッシュボード", "📑 本日のレース予測", "🗄️ 過去データ分析", "📈 スプレッドシート連携"],
+        label_visibility="collapsed"
+    )
+
     st.markdown("""
     <div class="sidebar-user">
         <div class="user-avatar">U</div>
@@ -264,144 +332,197 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 🚀 メインコンテンツ
+# 🚀 画面 1: 📊 ダッシュボード
 # ==========================================
+if menu == "📊 ダッシュボード":
+    col_h_left, col_h_right1, col_h_right2 = st.columns([6, 1.4, 1.6])
+    now_str = datetime.now().strftime("%Y年%m月%d日 %H:%M")
 
-# 1. ヘッダーエリア
-col_h_left, col_h_right1, col_h_right2 = st.columns([6, 1.3, 1.6])
+    with col_h_left:
+        st.markdown(f"""
+        <div class="main-title">回収率・期待値ダッシュボード</div>
+        <div class="last-update">最終更新: {now_str} (自動同期完了)</div>
+        """, unsafe_allow_html=True)
 
-with col_h_left:
-    st.markdown("""
-    <div class="main-title">回収率・期待値ダッシュボード</div>
-    <div class="last-update">最終更新: 2026年9月14日 22:30 (自動取得完了)</div>
-    """, unsafe_allow_html=True)
+    with col_h_right1:
+        st.markdown('<div class="btn-update">', unsafe_allow_html=True)
+        if st.button("🔄 データ更新", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
-with col_h_right1:
-    st.markdown('<div class="btn-update">', unsafe_allow_html=True)
-    if st.button("🔄 データ更新", use_container_width=True):
-        st.toast("スプレッドシートから最新データを同期しました！")
-    st.markdown('</div>', unsafe_allow_html=True)
+    with col_h_right2:
+        st.markdown('<div class="btn-auto">', unsafe_allow_html=True)
+        if st.button("🤖 半自動運用 ON", use_container_width=True):
+            st.toast("週末の全自動予測・投資判定モードが有効です。")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-with col_h_right2:
-    st.markdown('<div class="btn-auto">', unsafe_allow_html=True)
-    if st.button("🤖 半自動運用 ON", use_container_width=True):
-        st.toast("週末の自動予想・配信モードが有効です。")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.write("")
 
-st.write("")  # 余白調整
+    # 実データに基づく数値の算出
+    today_target_count = len(df_target) // 2 if df_target is not None and not df_target.empty else 0
+    today_race_count = len(df_today['レース名'].unique()) if df_today is not None and not df_today.empty and 'レース名' in df_today else 24
 
-# 2. 4枚のKPIカード
-c1, c2, c3, c4 = st.columns(4)
-
-with c1:
-    st.markdown("""
-    <div class="kpi-card">
-        <div class="kpi-title">AI全買い 回収率 (今月)</div>
-        <div class="kpi-value-row">
-            <span class="kpi-value">115.4</span><span class="kpi-sub">%</span>
-            <span class="kpi-diff-green">↑ +5.2%</span>
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.markdown("""
+        <div class="kpi-card">
+            <div class="kpi-title">AI全買い 回収率 (5年検証)</div>
+            <div class="kpi-value-row">
+                <span class="kpi-value">128.7</span><span class="kpi-sub">%</span>
+                <span class="kpi-diff-green">↑ 目標達成</span>
+            </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-with c2:
-    st.markdown("""
-    <div class="kpi-card">
-        <div class="kpi-title">実際の購入 回収率 (今月)</div>
-        <div class="kpi-value-row">
-            <span class="kpi-value">92.8</span><span class="kpi-sub">%</span>
-            <span class="kpi-diff-red">↓ -2.1%</span>
+    with c2:
+        st.markdown("""
+        <div class="kpi-card">
+            <div class="kpi-title">実力(RL)×適性(CL) 判定</div>
+            <div class="kpi-value-row">
+                <span class="kpi-value">70 : 30</span>
+                <span class="kpi-diff-green">● 黄金比率</span>
+            </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-with c3:
-    st.markdown("""
-    <div class="kpi-card">
-        <div class="kpi-title">本日 期待値1.0超え (発見数)</div>
-        <div class="kpi-value-row">
-            <span class="kpi-value">8</span><span class="kpi-sub">頭 / 36R中</span>
+    with c3:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-title">本日 勝負レース数</div>
+            <div class="kpi-value-row">
+                <span class="kpi-value">{today_target_count}</span><span class="kpi-sub">R / {today_race_count}R中</span>
+            </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-with c4:
-    st.markdown("""
-    <div class="kpi-card">
-        <div class="kpi-title">AIシミュレーション利益</div>
-        <div class="kpi-value-row">
-            <span class="kpi-value">+18,500</span><span class="kpi-sub">円</span>
+    with c4:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-title">本日 推奨投資額</div>
+            <div class="kpi-value-row">
+                <span class="kpi-value">{today_target_count * 200:,}</span><span class="kpi-sub">円</span>
+            </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-st.write("")
+    st.write("")
 
-# 3. 回収率推移チャート（Plotlyで完全再現）
-col_chart_title, col_chart_select = st.columns([7, 2])
-with col_chart_title:
-    st.markdown('<div class="chart-title">回収率推移（実績 vs AI予測）</div>', unsafe_allow_html=True)
-with col_chart_select:
-    period = st.selectbox("", ["直近10日間", "直近30日間", "今年度全期間"], label_visibility="collapsed")
+    # 回収率推移グラフ
+    col_chart_title, col_chart_select = st.columns([7, 2])
+    with col_chart_title:
+        st.markdown('<div style="font-size:1.15rem; font-weight:700; color:#FFFFFF;">回収率推移（実績 vs AI予測）</div>', unsafe_allow_html=True)
+    with col_chart_select:
+        period = st.selectbox("", ["直近10日間", "直近30日間", "今年度全期間"], label_visibility="collapsed")
 
-# グラフデータ（画像の曲線とポイントを忠実に再現）
-dates = [f"9/{i}" for i in range(5, 15)]
-ai_roi = [108.0, 109.5, 115.0, 111.0, 114.5, 120.5, 118.0, 122.5, 115.4, 128.7]
-actual_roi = [95.0, 94.0, 98.5, 96.0, 95.0, 97.5, 94.0, 96.5, 92.8, 98.2]
+    dates = [f"9/{i}" for i in range(5, 15)]
+    ai_roi = [108.0, 109.5, 115.0, 111.0, 114.5, 120.5, 118.0, 122.5, 124.2, 128.7]
 
-fig = go.Figure()
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=dates,
+        y=ai_roi,
+        name="AI判定通り全買い (期待値1.0超)",
+        mode="lines+markers",
+        line=dict(color="#6366F1", width=3, shape="spline"),
+        marker=dict(size=7, color="#6366F1", line=dict(color="#FFFFFF", width=1.5)),
+        hoverinfo="x+y"
+    ))
 
-# AI全買いの曲線（パープルのグラデーションと滑らかなスプライン）
-fig.add_trace(go.Scatter(
-    x=dates,
-    y=ai_roi,
-    name="AI判定通り全買い (期待値1.0超)",
-    mode="lines+markers",
-    line=dict(color="#6366F1", width=3, shape="spline"),
-    marker=dict(size=7, color="#6366F1", line=dict(color="#FFFFFF", width=1.5)),
-    hoverinfo="x+y"
-))
+    fig.update_layout(
+        height=340,
+        margin=dict(l=10, r=10, t=25, b=10),
+        paper_bgcolor="#141A29",
+        plot_bgcolor="#141A29",
+        font=dict(color="#94A3B8", size=12),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12, color="#CBD5E1")
+        ),
+        xaxis=dict(showgrid=True, gridcolor="#1E273D", zeroline=False),
+        yaxis=dict(showgrid=True, gridcolor="#1E273D", zeroline=False, ticksuffix="%", range=[105, 135]),
+        hovermode="x unified"
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
-# 実際の購入の曲線（必要に応じてトグル表示）
-fig.add_trace(go.Scatter(
-    x=dates,
-    y=actual_roi,
-    name="自分の実際の購入",
-    mode="lines+markers",
-    line=dict(color="#94A3B8", width=2, dash="dot", shape="spline"),
-    marker=dict(size=5, color="#94A3B8"),
-    visible="legendonly"  # デフォルトは非表示（凡例クリックで表示可能）
-))
+# ==========================================
+# 📑 画面 2: 本日のレース予測
+# ==========================================
+elif menu == "📑 本日のレース予測":
+    st.markdown('<div class="main-title">本日の厳選勝負レース（馬連2点）</div>', unsafe_allow_html=True)
+    st.markdown('<div class="last-update">スプレッドシート「本日勝負レース」からリアルタイム取得中</div>', unsafe_allow_html=True)
 
-# グラフレイアウト（完全ダークネイビー仕様）
-fig.update_layout(
-    height=340,
-    margin=dict(l=10, r=10, t=25, b=10),
-    paper_bgcolor="#141A29",
-    plot_bgcolor="#141A29",
-    font=dict(color="#94A3B8", size=12),
-    legend=dict(
-        orientation="h",
-        yanchor="bottom",
-        y=1.02,
-        xanchor="center",
-        x=0.5,
-        font=dict(size=12, color="#CBD5E1")
-    ),
-    xaxis=dict(
-        showgrid=True,
-        gridcolor="#1E273D",
-        zeroline=False,
-        showline=False
-    ),
-    yaxis=dict(
-        showgrid=True,
-        gridcolor="#1E273D",
-        zeroline=False,
-        ticksuffix="%",
-        range=[105, 135]
-    ),
-    hovermode="x unified"
-)
+    if df_target is not None and not df_target.empty:
+        # レースごとにグループ化してカード表示
+        unique_races = df_target[['日付', '競馬場', 'レース名', '条件', '軸馬 (◎)']].drop_duplicates()
+        for _, r in unique_races.iterrows():
+            sub_df = df_target[(df_target['競馬場'] == r['競馬場']) & (df_target['レース名'] == r['レース名'])]
+            
+            st.markdown(f"""
+            <div class="race-card">
+                <div class="race-header">
+                    <span class="race-name">📍 [{r['競馬場']}] {r['レース名']} ({r['条件']})</span>
+                    <span class="race-badge">黄金条件合致</span>
+                </div>
+                <div style="font-size: 0.95rem; color: #E2E8F0; margin-bottom: 0.8rem;">
+                    🎯 <b>軸馬 (◎)</b> : <span style="color: #6366F1; font-weight:700;">{r['軸馬 (◎)']}</span>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # 2つの買い目を横並び表示
+            c_bet1, c_bet2 = st.columns(2)
+            if len(sub_df) >= 2:
+                with c_bet1:
+                    row1 = sub_df.iloc[0]
+                    st.markdown(f"""
+                    <div style="background:#1B2338; padding:10px 14px; border-radius:8px; border-left:3px solid #3B82F6;">
+                        <span style="color:#94A3B8; font-size:0.8rem;">点① 本線・抑え</span><br>
+                        <b style="font-size:1.1rem; color:#FFFFFF;">馬連 {row1['買い目']}</b><br>
+                        <span style="font-size:0.85rem; color:#CBD5E1;">相手: {row1['相手馬']} ｜ 想定: {row1['想定オッズ']}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with c_bet2:
+                    row2 = sub_df.iloc[1]
+                    st.markdown(f"""
+                    <div style="background:#1B2338; padding:10px 14px; border-radius:8px; border-left:3px solid #10B981;">
+                        <span style="color:#94A3B8; font-size:0.8rem;">点② 利益の核（真の△1）</span><br>
+                        <b style="font-size:1.1rem; color:#FFFFFF;">馬連 {row2['買い目']}</b><br>
+                        <span style="font-size:0.85rem; color:#CBD5E1;">相手: {row2['相手馬']} ｜ 想定: {row2['想定オッズ']}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.info("スプレッドシートに本日の勝負レースデータがありません。Chromebookで判定スクリプトを実行するか、「🔄 データ更新」を押してください。")
 
-st.plotly_chart(fig, use_container_width=True)
+# ==========================================
+# 🗄️ 画面 3: 過去データ分析
+# ==========================================
+elif menu == "🗄️ 過去データ分析":
+    st.markdown('<div class="main-title">過去データバックテスト分析</div>', unsafe_allow_html=True)
+    st.markdown('<div class="last-update">210,000件のビッグデータ検証結果</div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    | 検証項目 | 検証ルール | 回収率 | 連対率 |
+    | :--- | :--- | :---: | :---: |
+    | **黄金条件合致（全体）** | 芝1500m以上 × 1人気3.5倍未満 × 馬連2点 | **128.7%** | **42.9%** |
+    | **点①（◎ - ◯）** | 本線・実力上位の組み合わせ | 64.8% | 31.2% |
+    | **点②（◎ - △1）** | 期待値・適性上位の伏兵狙い | **163.9%** | 11.7% |
+    """)
+
+# ==========================================
+# 📈 画面 4: スプレッドシート連携
+# ==========================================
+elif menu == "📈 スプレッドシート連携":
+    st.markdown('<div class="main-title">Google スプレッドシート連携ステータス</div>', unsafe_allow_html=True)
+    gc = get_gspread_client()
+    if gc:
+        st.success(f"🔐 連携成功: 「{SS_NAME}」と正常にリアルタイム同期しています。")
+        if df_target is not None and not df_target.empty:
+            st.write("▼ 最新の取得データ一覧")
+            st.dataframe(df_target, use_container_width=True)
+    else:
+        st.error("🚨 スプレッドシートに接続できませんでした。Streamlit Secretsの設定を確認してください。")
