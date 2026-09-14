@@ -311,6 +311,31 @@ st.markdown("""
         border-radius: 4px;
         border: 1px solid #6366F1;
     }
+
+    /* やることリスト用ステップスタイル */
+    .step-box {
+        background: #141A29;
+        border: 1px solid #1E273D;
+        border-radius: 10px;
+        padding: 1rem 1.2rem;
+        margin-bottom: 0.8rem;
+    }
+    .step-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        color: #FFFFFF;
+        margin-bottom: 0.4rem;
+    }
+    .step-badge {
+        background: #4F46E5;
+        color: white;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 999px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -348,7 +373,6 @@ def load_sheet_data():
         return None, None, None
     try:
         ss = gc.open(SS_NAME)
-        # 本日勝負レース
         try:
             ws_target = ss.worksheet("本日勝負レース")
             all_vals = ws_target.get_all_values()
@@ -365,7 +389,6 @@ def load_sheet_data():
         except:
             df_target = pd.DataFrame()
 
-        # 本日全頭
         try:
             ws_today = ss.worksheet("本日")
             today_vals = ws_today.get_all_records()
@@ -373,7 +396,6 @@ def load_sheet_data():
         except:
             df_today = pd.DataFrame()
 
-        # 日次収支
         try:
             ws_daily = ss.worksheet("日次収支")
             daily_vals = ws_daily.get_all_records()
@@ -432,7 +454,6 @@ if menu == "📊 ダッシュボード":
             st.rerun()
     st.write("")
 
-    # 実収支データからKPIを計算
     ai_roi, usr_roi = 0.0, 0.0
     if df_daily_log is not None and not df_daily_log.empty and 'AI投資額' in df_daily_log.columns:
         df_daily_calc = df_daily_log.copy()
@@ -514,9 +535,7 @@ if menu == "📊 ダッシュボード":
 
     st.write("")
 
-    # ==========================================
-    # 📈 回収率推移グラフ（日毎/月ごと/年ごと 切り替え）
-    # ==========================================
+    # 回収率推移グラフ
     col_chart_title, col_chart_select = st.columns([6, 3])
     with col_chart_title:
         st.markdown('<div style="font-size:1.15rem; font-weight:700; color:#FFFFFF;">回収率推移（AI理論値 vs あなたの実績）</div>', unsafe_allow_html=True)
@@ -535,7 +554,6 @@ if menu == "📊 ダッシュボード":
         df_plot['ユーザー投資額'] = pd.to_numeric(df_plot['ユーザー投資額'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         df_plot['ユーザー回収額'] = pd.to_numeric(df_plot['ユーザー回収額'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
 
-        # 日付型変換とソート
         df_plot['日付_dt'] = pd.to_datetime(df_plot['日付'], errors='coerce')
         df_plot = df_plot.dropna(subset=['日付_dt']).sort_values('日付_dt').reset_index(drop=True)
 
@@ -563,10 +581,7 @@ if menu == "📊 ダッシュボード":
             elif chart_mode == "月ごと (月別集計)":
                 df_plot['年月'] = df_plot['日付_dt'].dt.strftime('%Y/%m')
                 sub_df = df_plot.groupby('年月', as_index=False).agg({
-                    'AI投資額': 'sum',
-                    'AI回収額': 'sum',
-                    'ユーザー投資額': 'sum',
-                    'ユーザー回収額': 'sum'
+                    'AI投資額': 'sum', 'AI回収額': 'sum', 'ユーザー投資額': 'sum', 'ユーザー回収額': 'sum'
                 })
                 x_vals = sub_df['年月'].tolist()
                 ai_vals = np.where(sub_df['AI投資額'] > 0, (sub_df['AI回収額'] / sub_df['AI投資額']) * 100, 0.0)
@@ -575,10 +590,7 @@ if menu == "📊 ダッシュボード":
             elif chart_mode == "年ごと (年別集計)":
                 df_plot['年'] = df_plot['日付_dt'].dt.strftime('%Y年')
                 sub_df = df_plot.groupby('年', as_index=False).agg({
-                    'AI投資額': 'sum',
-                    'AI回収額': 'sum',
-                    'ユーザー投資額': 'sum',
-                    'ユーザー回収額': 'sum'
+                    'AI投資額': 'sum', 'AI回収額': 'sum', 'ユーザー投資額': 'sum', 'ユーザー回収額': 'sum'
                 })
                 x_vals = sub_df['年'].tolist()
                 ai_vals = np.where(sub_df['AI投資額'] > 0, (sub_df['AI回収額'] / sub_df['AI投資額']) * 100, 0.0)
@@ -594,7 +606,6 @@ if menu == "📊 ダッシュボード":
                 ai_vals = np.where(sub_df['AI_CUM_INV'] > 0, (sub_df['AI_CUM_RET'] / sub_df['AI_CUM_INV']) * 100, 100.0)
                 usr_vals = np.where(sub_df['USR_CUM_INV'] > 0, (sub_df['USR_CUM_RET'] / sub_df['USR_CUM_INV']) * 100, 100.0)
 
-            # AI理論回収率ライン
             fig.add_trace(go.Scatter(
                 x=x_vals, y=ai_vals,
                 name="AI理論回収率 (1点100円)",
@@ -604,7 +615,6 @@ if menu == "📊 ダッシュボード":
                 hovertemplate="%{x}<br>AI回収率: %{y:.1f}%<extra></extra>"
             ))
 
-            # ユーザー実回収率ライン
             fig.add_trace(go.Scatter(
                 x=x_vals, y=usr_vals,
                 name="あなたの実回収率",
@@ -624,7 +634,6 @@ if menu == "📊 ダッシュボード":
             marker=dict(size=7, color="#6366F1", line=dict(color="#FFFFFF", width=1.5))
         ))
 
-    # 損益分岐ライン（100%基準線）
     fig.add_hline(
         y=100,
         line_dash="dash",
@@ -826,57 +835,113 @@ elif menu == "💰 収支入力・管理":
                 st.error("🚨 スプレッドシートの認証に失敗しました。")
 
 # ==========================================
-# 💻 画面 5: ターミナル操作マニュアル
+# 💻 画面 5: ターミナル操作マニュアル（★やることリスト＆手動回収追加）
 # ==========================================
 elif menu == "💻 ターミナル操作マニュアル":
     st.markdown('<div class="main-title">Chromebook ターミナル操作マニュアル</div>', unsafe_allow_html=True)
     st.markdown('<div class="last-update">各枠右上のコピーボタンを押してターミナルに貼り付けてください</div>', unsafe_allow_html=True)
 
+    # 🌟 競馬終了後のやることリスト
+    st.markdown("""
+    <div style="background:#1B2238; border:1px solid #6366F1; border-radius:12px; padding:1.2rem; margin-bottom:1.8rem;">
+        <h4 style="color:#FFFFFF; margin-top:0; display:flex; align-items:center; gap:8px;">
+            <span>🏁</span> 週末競馬終了後のやることリスト（3ステップ）
+        </h4>
+        <div class="step-box">
+            <div class="step-header">
+                <span class="step-badge">STEP 1</span> 結果回収の確認（または手動実行）
+            </div>
+            <div style="font-size:0.9rem; color:#CBD5E1;">
+                Chromebookを開いておりタイマーが動いていれば自動完了しています。<br>
+                <b>「Chromebookを閉じていた場合」や「急いで今すぐ反映したい場合」</b>は、下記の <b>3. 手動結果回収コマンド</b> を実行してください。
+            </div>
+        </div>
+        <div class="step-box">
+            <div class="step-header">
+                <span class="step-badge">STEP 2</span> あなたの実収支を入力
+            </div>
+            <div style="font-size:0.9rem; color:#CBD5E1;">
+                左メニューの <b>「💰 収支入力・管理」</b> を開き、即PATなどの画面を見ながら「今日の総購入額」と「総払戻額」を入力して「保存」を押します。
+            </div>
+        </div>
+        <div class="step-box" style="margin-bottom:0;">
+            <div class="step-header">
+                <span class="step-badge">STEP 3</span> ダッシュボードで成果確認
+            </div>
+            <div style="font-size:0.9rem; color:#CBD5E1;">
+                左メニューの <b>「📊 ダッシュボード」</b> を開き、右上の「🔄 データ更新」をクリック。AI理論回収率とあなたの実回収率グラフをチェック！
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 1. 朝のリアルタイム予想実行
     st.markdown("""
     <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
-        <h4 style="color:#FFFFFF; margin-top:0;">⚡ 1. 本日のリアルタイム予想実行（全レース巡回）</h4>
+        <h4 style="color:#FFFFFF; margin-top:0;">⚡ 1. 本日のリアルタイム予想実行（朝の手動実行）</h4>
         <p style="color:#94A3B8; font-size:0.9rem;">
-            当日朝（8:30〜9:30頃）に実行します。全レースを自動巡回し、黄金条件に合致した勝負レースをスプレッドシートに反映します。
+            当日朝に手動で全レース巡回と黄金条件判定を行いたい場合に実行します。
         </p>
     """, unsafe_allow_html=True)
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 run.py", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # 2. 1レースピンポイント分析
     st.markdown("""
     <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
         <h4 style="color:#FFFFFF; margin-top:0;">🎯 2. 【1レースピンポイント分析】URL不要・会場と数字だけで分析</h4>
         <p style="color:#94A3B8; font-size:0.9rem;">
-            「ダートや短距離だけどこのレースだけAIの印を見たい」「重賞だけ買いたい」という時に実行します。<br>
-            ネット競馬のURLは不要で、<b>「場所」と「数字」</b>を書き換えるだけで15秒で印と馬連2点を出力します。
+            ダート・短距離・重賞など、気になるレースを15秒で即座にAI診断します。
         </p>
     """, unsafe_allow_html=True)
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 check.py 中山 11", language="bash")
     st.caption("※「中山 11」の部分を「阪神 10」や「中京 11」のように自由に変えて実行できます。")
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # 3. 🌟 手動結果回収コマンド（新規追加）
     st.markdown("""
     <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
-        <h4 style="color:#FFFFFF; margin-top:0;">📅 3. 過去日付のシミュレーション実行</h4>
+        <h4 style="color:#FFFFFF; margin-top:0;">🏁 3. 【手動結果回収】Chromebookを開いていなかった時の回収</h4>
         <p style="color:#94A3B8; font-size:0.9rem;">
-            過去の特定日や2日間の検証を行う場合、末尾に半角スペース区切りで日付（YYYYMMDD）を指定して実行します。
+            <b>当日夜に手動実行する場合</b>（今日の全レース結果を回収して日次収支シートを即更新）:
+        </p>
+    """, unsafe_allow_html=True)
+    st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 result.py", language="bash")
+    st.markdown("""
+        <p style="color:#94A3B8; font-size:0.9rem; margin-top:12px;">
+            <b>過去日付（昨日や先週など）を指定して遡り回収する場合</b>:
+        </p>
+    """, unsafe_allow_html=True)
+    st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 result.py 20260913", language="bash")
+    st.caption("※末尾の「20260913」を回収したい日付（YYYYMMDD）に変更してください。")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # 4. 過去日テスト
+    st.markdown("""
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
+        <h4 style="color:#FFFFFF; margin-top:0;">📅 4. 過去日付の予想シミュレーション実行</h4>
+        <p style="color:#94A3B8; font-size:0.9rem;">
+            過去の特定日や2日間の検証を行う場合、末尾に半角スペース区切りで日付を指定して実行します。
         </p>
     """, unsafe_allow_html=True)
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 run.py 20260912 20260913", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # 5. タイマーログ確認
     st.markdown("""
     <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
-        <h4 style="color:#FFFFFF; margin-top:0;">⏰ 4. 自動タイマー（朝9時実行）のログ確認</h4>
+        <h4 style="color:#FFFFFF; margin-top:0;">⏰ 5. 自動タイマー（朝9時・夕方16:45/18:45）の実行ログ確認</h4>
         <p style="color:#94A3B8; font-size:0.9rem;">
-            土日の朝9時に自動実行された処理が正常に完了したか、直近の実行ログを確認します。
+            タイマーが正常に動作したかどうか、直近のログを確認します。
         </p>
     """, unsafe_allow_html=True)
     st.code("cat /home/ozdnyzww1/keiba_cron.log", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # 6. 緊急停止・更地化
     st.markdown("""
     <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
-        <h4 style="color:#FFFFFF; margin-top:0;">🧹 5. メモリ解放 ＆ 停止コマンド（緊急用）</h4>
+        <h4 style="color:#FFFFFF; margin-top:0;">🧹 6. メモリ解放 ＆ 停止コマンド（緊急用）</h4>
         <p style="color:#94A3B8; font-size:0.9rem;">
             動作が重い時や、裏で残ってしまったブラウザプロセスを一掃して更地に戻します。
         </p>
