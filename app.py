@@ -17,7 +17,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 カスタムCSS（白抜き完全根絶・左下固定）
+# 🎨 カスタムCSS（タブ崩れ修正・完全ダークテーマ）
 # ==========================================
 st.markdown("""
 <style>
@@ -45,33 +45,41 @@ st.markdown("""
         padding: 0.5rem 0.5rem 1.5rem 0.5rem;
     }
 
-    /* ラジオボタンの丸（ポッチ）を消して綺麗なメニューにする */
-    [data-testid="stSidebar"] div[role="radiogroup"] label div:first-child {
-        display: none !important;
-    }
+    /* 🌟 サイドバーメニューのテキストが見えなくなる問題を修正 */
     [data-testid="stSidebar"] div[role="radiogroup"] > label {
         background-color: transparent !important;
-        padding: 10px 14px !important;
+        padding: 8px 12px !important;
         border-radius: 8px !important;
+        margin-bottom: 4px !important;
+        cursor: pointer !important;
+        border: none !important;
+    }
+    /* テキストの文字色を明示的に指定 */
+    [data-testid="stSidebar"] div[role="radiogroup"] > label p {
         color: #94A3B8 !important;
         font-size: 0.95rem !important;
         font-weight: 500 !important;
-        margin-bottom: 6px !important;
-        cursor: pointer !important;
-        border: 1px solid transparent !important;
     }
+    /* 選択時のスタイル */
+    [data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"],
     [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) {
         background-color: #1E2238 !important;
-        color: #FFFFFF !important;
-        font-weight: 600 !important;
         border-left: 3px solid #6366F1 !important;
     }
+    [data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] p,
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) p {
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
+    }
+    /* ホバー時のスタイル */
     [data-testid="stSidebar"] div[role="radiogroup"] > label:hover {
         background-color: #161C2E !important;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:hover p {
         color: #E2E8F0 !important;
     }
 
-    /* 🌟 システム稼働中バッジを「画面左下」に完全固定 */
+    /* システム稼働中バッジを「画面左下」に完全固定 */
     .sidebar-user {
         position: fixed !important;
         bottom: 24px !important;
@@ -128,7 +136,7 @@ st.markdown("""
         margin-bottom: 1.2rem;
     }
 
-    /* 🌟 ボタンの白抜きを全状態（ホバー・アクティブ含む）で完全根絶 */
+    /* ボタンの白抜き防止 */
     button[kind="secondary"], 
     button[kind="primary"],
     [data-testid="stButton"] button {
@@ -150,20 +158,6 @@ st.markdown("""
     [data-testid="stButton"] button:hover p,
     [data-testid="stButton"] button:hover span {
         color: #FFFFFF !important;
-    }
-
-    /* 半自動運用ボタン（パープル・白文字・影付き） */
-    .btn-auto [data-testid="stButton"] button {
-        background-color: #4F46E5 !important;
-        border: 1px solid #6366F1 !important;
-        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35) !important;
-    }
-    .btn-auto [data-testid="stButton"] button p,
-    .btn-auto [data-testid="stButton"] button span {
-        color: #FFFFFF !important;
-    }
-    .btn-auto [data-testid="stButton"] button:hover {
-        background-color: #4338CA !important;
     }
 
     /* KPIカード */
@@ -328,7 +322,6 @@ with st.sidebar:
         label_visibility="collapsed"
     )
 
-    # 画面左下に完全固定されるバッジ
     st.markdown("""
     <div class="sidebar-user">
         <div class="user-avatar">U</div>
@@ -343,7 +336,8 @@ with st.sidebar:
 # 🚀 画面 1: 📊 ダッシュボード
 # ==========================================
 if menu == "📊 ダッシュボード":
-    col_h_left, col_h_right1, col_h_right2 = st.columns([6, 1.4, 1.6])
+    # ヘッダー構成（「半自動運用」ボタンを削除してスッキリ2カラムに）
+    col_h_left, col_h_right = st.columns([8, 2])
     now_str = datetime.now().strftime("%Y年%m月%d日 %H:%M")
 
     with col_h_left:
@@ -352,22 +346,34 @@ if menu == "📊 ダッシュボード":
         <div class="last-update">最終更新: {now_str} (自動同期完了)</div>
         """, unsafe_allow_html=True)
 
-    with col_h_right1:
+    with col_h_right:
+        st.markdown('<div class="btn-update">', unsafe_allow_html=True)
         if st.button("🔄 データ更新", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
-
-    with col_h_right2:
-        st.markdown('<div class="btn-auto">', unsafe_allow_html=True)
-        if st.button("🤖 半自動運用 ON", use_container_width=True):
-            st.toast("週末の全自動予測・投資判定モードが有効です。")
         st.markdown('</div>', unsafe_allow_html=True)
 
     st.write("")
 
-    # 実データに基づく数値の算出
-    today_target_count = len(df_target) // 2 if df_target is not None and not df_target.empty else 0
-    today_race_count = len(df_today['レース名'].unique()) if df_today is not None and not df_today.empty and 'レース名' in df_today else 24
+    # 🌟 最新日付のみを抽出してカウントするロジック（12/10R問題の修正）
+    today_target_count = 0
+    today_race_count = 0
+    latest_date_str = ""
+
+    if df_target is not None and not df_target.empty and '日付' in df_target.columns:
+        latest_date_str = df_target['日付'].max() # 記録されている一番新しい日付
+        df_target_latest = df_target[df_target['日付'] == latest_date_str]
+        # その日付のユニークなレース名数をカウント
+        today_target_count = len(df_target_latest[['競馬場', 'レース名']].drop_duplicates())
+
+    if df_today is not None and not df_today.empty and '日付' in df_today.columns:
+        if not latest_date_str:
+            latest_date_str = df_today['日付'].max()
+        df_today_latest = df_today[df_today['日付'] == latest_date_str]
+        today_race_count = len(df_today_latest['レース名'].unique())
+    
+    # 投資額は最新日の勝負レース数 × 200円
+    today_investment = today_target_count * 200
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
@@ -395,7 +401,7 @@ if menu == "📊 ダッシュボード":
     with c3:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-title">本日 勝負レース数</div>
+            <div class="kpi-title">最新日 勝負レース数</div>
             <div class="kpi-value-row">
                 <span class="kpi-value">{today_target_count}</span><span class="kpi-sub">R / {today_race_count}R中</span>
             </div>
@@ -405,9 +411,9 @@ if menu == "📊 ダッシュボード":
     with c4:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-title">本日 推奨投資額</div>
+            <div class="kpi-title">最新日 推奨投資額</div>
             <div class="kpi-value-row">
-                <span class="kpi-value">{today_target_count * 200:,}</span><span class="kpi-sub">円</span>
+                <span class="kpi-value">{today_investment:,}</span><span class="kpi-sub">円</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -462,10 +468,13 @@ elif menu == "📑 本日のレース予測":
     st.markdown('<div class="main-title">本日の厳選勝負レース（馬連2点）</div>', unsafe_allow_html=True)
     st.markdown('<div class="last-update">スプレッドシート「本日勝負レース」からリアルタイム取得中</div>', unsafe_allow_html=True)
 
-    if df_target is not None and not df_target.empty:
-        unique_races = df_target[['日付', '競馬場', 'レース名', '条件', '軸馬 (◎)']].drop_duplicates()
+    if df_target is not None and not df_target.empty and '日付' in df_target.columns:
+        latest_date_str = df_target['日付'].max()
+        df_target_latest = df_target[df_target['日付'] == latest_date_str]
+        
+        unique_races = df_target_latest[['日付', '競馬場', 'レース名', '条件', '軸馬 (◎)']].drop_duplicates()
         for _, r in unique_races.iterrows():
-            sub_df = df_target[(df_target['競馬場'] == r['競馬場']) & (df_target['レース名'] == r['レース名'])]
+            sub_df = df_target_latest[(df_target_latest['競馬場'] == r['競馬場']) & (df_target_latest['レース名'] == r['レース名'])]
             
             st.markdown(f"""
             <div class="race-card">
@@ -500,7 +509,7 @@ elif menu == "📑 本日のレース予測":
                     """, unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
     else:
-        st.info("スプレッドシートに本日の勝負レースデータがありません。")
+        st.info("スプレッドシートに最新の勝負レースデータがありません。")
 
 # ==========================================
 # 🗄️ 画面 3: 過去データ分析
