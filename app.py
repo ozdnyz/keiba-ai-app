@@ -151,7 +151,7 @@ st.markdown("""
         margin-bottom: 1rem;
     }
 
-    /* ボタン基本共通 */
+    /* ボタン共通 */
     button[kind="secondary"], 
     button[kind="primary"],
     [data-testid="stButton"] button {
@@ -172,7 +172,7 @@ st.markdown("""
         color: #FFFFFF !important;
     }
 
-    /* 🌟 ハテナ丸枠ボタン（完全な円形） */
+    /* ハテナ丸枠ボタン */
     div[class*="st-key-help_modal_btn"] button {
         width: 38px !important;
         height: 38px !important;
@@ -187,7 +187,7 @@ st.markdown("""
         margin-left: auto !important;
     }
 
-    /* 🌟 データ更新ボタンの適正サイズ化（横長肥大化の防止） */
+    /* データ更新ボタン適正サイズ */
     div[class*="st-key-refresh_btn"] button {
         height: 38px !important;
         min-height: 38px !important;
@@ -199,6 +199,25 @@ st.markdown("""
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
+    }
+
+    /* 🌟 ポップアップダイアログのダークテーマ強制＆文字色強化 */
+    div[role="dialog"],
+    div[data-testid="stDialog"] > div {
+        background-color: #0E1322 !important;
+        color: #FFFFFF !important;
+        border: 1px solid #1E273D !important;
+        border-radius: 12px !important;
+    }
+    div[role="dialog"] h2 {
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
+    }
+    div[role="dialog"] button[aria-label="Close"] {
+        color: #94A3B8 !important;
+    }
+    div[role="dialog"] button[aria-label="Close"]:hover {
+        color: #FFFFFF !important;
     }
 
     [data-testid="stForm"] {
@@ -431,48 +450,48 @@ def load_sheet_data():
 df_target, df_today, df_daily_log = load_sheet_data()
 
 # ==========================================
-# 🌟 運用サイクルのポップアップダイアログ
+# 🌟 運用サイクルのポップアップダイアログ（視認性大幅向上版）
 # ==========================================
 @st.dialog("🔄 競馬AI 運用サイクル・フロー")
 def show_flow_modal():
     st.markdown("""
-    <div style="font-size:0.95rem; color:#CBD5E1; line-height:1.6;">
+    <div style="font-size:1rem; color:#FFFFFF !important; font-weight:700; line-height:1.6; padding-bottom:6px;">
         「即時性が必要なもの」と「じっくり蓄積する資産」を分けた理想の運用サイクルです。
     </div>
-    <div style="margin-top:12px;"></div>
+    <div style="margin-top:8px;"></div>
     """, unsafe_allow_html=True)
 
     st.markdown("""
-    <div style="background:#141A29; border:1px solid #1E273D; border-left:4px solid #6366F1; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
-        <div style="font-weight:700; color:#FFFFFF; font-size:1rem; margin-bottom:4px;">
+    <div style="background:#141A29; border:1px solid #2B354F; border-left:4px solid #6366F1; border-radius:8px; padding:12px 14px; margin-bottom:12px;">
+        <div style="font-weight:700; color:#FFFFFF !important; font-size:1rem; margin-bottom:6px;">
             🌅 1. 【朝 9:00】 予測・出撃フェーズ（run.py）
         </div>
-        <div style="font-size:0.85rem; color:#94A3B8;">
-            <b>・処理</b>: 全レース自動巡回 ➔ 黄金条件（芝1500m+ × 1人気3.5倍未満）合致レースを抽出<br>
-            <b>・反映先</b>: 「本日」「本日勝負レース」シート（作業用キャッシュ）<br>
-            <b>・操作</b>: スマホで「🎯 厳選勝負レース」を確認して馬券購入
+        <div style="font-size:0.88rem; color:#E2E8F0 !important; line-height:1.5;">
+            <b style="color:#A5B4FC;">・処理</b>: 全レース自動巡回 ➔ 黄金条件（芝1500m+ × 1人気3.5倍未満）合致レースを抽出<br>
+            <b style="color:#A5B4FC;">・反映先</b>: 「本日」「本日勝負レース」シート（作業用キャッシュ）<br>
+            <b style="color:#A5B4FC;">・操作</b>: スマホで「🎯 厳選勝負レース」を確認して馬券購入
         </div>
     </div>
 
-    <div style="background:#141A29; border:1px solid #1E273D; border-left:4px solid #10B981; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
-        <div style="font-weight:700; color:#FFFFFF; font-size:1rem; margin-bottom:4px;">
+    <div style="background:#141A29; border:1px solid #2B354F; border-left:4px solid #10B981; border-radius:8px; padding:12px 14px; margin-bottom:12px;">
+        <div style="font-weight:700; color:#FFFFFF !important; font-size:1rem; margin-bottom:6px;">
             🌆 2. 【夕方 16:45/18:45】 収支確定フェーズ（result.py）
         </div>
-        <div style="font-size:0.85rem; color:#94A3B8;">
-            <b>・処理</b>: 確定着順と馬連配当を自動回収 ➔ AI買い目（各100円）と照合<br>
-            <b>・反映先</b>: 「日次収支」シート（1日1行）<br>
-            <b>・操作</b>: 左メニュー「💰 収支入力・管理」から今日の総購入額と総払戻額を保存
+        <div style="font-size:0.88rem; color:#E2E8F0 !important; line-height:1.5;">
+            <b style="color:#6EE7B7;">・処理</b>: 確定着順と馬連配当を自動回収 ➔ AI買い目（各100円）と照合<br>
+            <b style="color:#6EE7B7;">・反映先</b>: 「日次収支」シート（1日1行）<br>
+            <b style="color:#6EE7B7;">・操作</b>: 左メニュー「💰 収支入力・管理」から今日の総購入額と総払戻額を保存
         </div>
     </div>
 
-    <div style="background:#141A29; border:1px solid #1E273D; border-left:4px solid #F59E0B; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
-        <div style="font-weight:700; color:#FFFFFF; font-size:1rem; margin-bottom:4px;">
+    <div style="background:#141A29; border:1px solid #2B354F; border-left:4px solid #F59E0B; border-radius:8px; padding:12px 14px; margin-bottom:6px;">
+        <div style="font-weight:700; color:#FFFFFF !important; font-size:1rem; margin-bottom:6px;">
             🌙 3. 【夜〜週明け】 データ資産蓄積フェーズ
         </div>
-        <div style="font-size:0.85rem; color:#94A3B8;">
-            <b>・処理</b>: 確定データベースから全レース結果・血統・タイム等を安全に回収<br>
-            <b>・反映先</b>: 「2026年データ」等の年別シート（ビッグデータ蓄積）<br>
-            <b>・目的</b>: 将来のRL:CL比率最適化やAIモデルチューニング用の母数プール
+        <div style="font-size:0.88rem; color:#E2E8F0 !important; line-height:1.5;">
+            <b style="color:#FCD34D;">・処理</b>: 確定データベースから全レース結果・血統・タイム等を安全に回収<br>
+            <b style="color:#FCD34D;">・反映先</b>: 「2026年データ」等の年別シート（ビッグデータ蓄積）<br>
+            <b style="color:#FCD34D;">・目的</b>: 将来のRL:CL比率最適化やAIモデルチューニング用の母数プール
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -517,7 +536,6 @@ if menu == "📊 ダッシュボード":
         """, unsafe_allow_html=True)
 
     with col_h_right:
-        # 右寄せで配置（余白＋丸ハテナ＋適正サイズデータ更新）
         c_space, c_help, c_btn = st.columns([1.5, 1, 2.5])
         with c_help:
             if st.button("❓", key="help_modal_btn", help="全体の運用フローを確認"):
