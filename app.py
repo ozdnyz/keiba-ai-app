@@ -151,6 +151,7 @@ st.markdown("""
         margin-bottom: 1rem;
     }
 
+    /* ボタン基本共通 */
     button[kind="secondary"], 
     button[kind="primary"],
     [data-testid="stButton"] button {
@@ -158,9 +159,7 @@ st.markdown("""
         color: #E2E8F0 !important;
         border: 1px solid #2B354F !important;
         border-radius: 8px !important;
-        padding: 0.55rem 0.8rem !important;
         font-weight: 600 !important;
-        min-height: 42px !important;
     }
     [data-testid="stButton"] button p {
         color: #E2E8F0 !important;
@@ -171,6 +170,35 @@ st.markdown("""
     }
     [data-testid="stButton"] button:hover p {
         color: #FFFFFF !important;
+    }
+
+    /* 🌟 ハテナ丸枠ボタン（完全な円形） */
+    div[class*="st-key-help_modal_btn"] button {
+        width: 38px !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        max-width: 38px !important;
+        border-radius: 50% !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 0.95rem !important;
+        margin-left: auto !important;
+    }
+
+    /* 🌟 データ更新ボタンの適正サイズ化（横長肥大化の防止） */
+    div[class*="st-key-refresh_btn"] button {
+        height: 38px !important;
+        min-height: 38px !important;
+        padding: 0 16px !important;
+        font-size: 0.88rem !important;
+        border-radius: 8px !important;
+        width: auto !important;
+        white-space: nowrap !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 
     [data-testid="stForm"] {
@@ -479,7 +507,7 @@ with st.sidebar:
 # 🚀 画面 1: 📊 ダッシュボード
 # ==========================================
 if menu == "📊 ダッシュボード":
-    col_h_left, col_h_right = st.columns([6.5, 3.5])
+    col_h_left, col_h_right = st.columns([7, 3])
     now_str = datetime.now().strftime("%Y年%m月%d日 %H:%M")
 
     with col_h_left:
@@ -489,12 +517,13 @@ if menu == "📊 ダッシュボード":
         """, unsafe_allow_html=True)
 
     with col_h_right:
-        c_help, c_btn = st.columns([1, 2.5])
+        # 右寄せで配置（余白＋丸ハテナ＋適正サイズデータ更新）
+        c_space, c_help, c_btn = st.columns([1.5, 1, 2.5])
         with c_help:
-            if st.button("❓", help="全体の運用フローを確認", use_container_width=True):
+            if st.button("❓", key="help_modal_btn", help="全体の運用フローを確認"):
                 show_flow_modal()
         with c_btn:
-            if st.button("🔄 データ更新", use_container_width=True):
+            if st.button("🔄 データ更新", key="refresh_btn"):
                 st.cache_data.clear()
                 st.rerun()
 
