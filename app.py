@@ -14,7 +14,7 @@ st.set_page_config(
     page_title="Keiba AI Core",
     page_icon="🐴",
     layout="wide",
-    initial_sidebar_state="collapsed"  # スマホ閲覧時は初期状態でサイドバーを閉じる
+    initial_sidebar_state="auto"  # PCでは最初から開き、スマホでは自動で折りたたむ
 )
 
 # ==========================================
