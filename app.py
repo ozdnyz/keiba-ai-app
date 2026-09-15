@@ -14,7 +14,7 @@ st.set_page_config(
     page_title="Keiba AI Core",
     page_icon="🐴",
     layout="wide",
-    initial_sidebar_state="auto"  # PCでは最初から開き、スマホでは自動で折りたたむ
+    initial_sidebar_state="auto"  # PCは開き、スマホは自動折りたたみ
 )
 
 # ==========================================
@@ -22,14 +22,12 @@ st.set_page_config(
 # ==========================================
 st.markdown("""
 <style>
-    /* 全体背景とフォント */
     .stApp {
         background-color: #0B0F19 !important;
         color: #F3F4F6 !important;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     
-    /* サイドバー */
     [data-testid="stSidebar"] {
         background-color: #0E1322 !important;
         border-right: 1px solid #1E2640 !important;
@@ -45,7 +43,6 @@ st.markdown("""
         padding: 0.5rem 0.5rem 1.5rem 0.5rem;
     }
 
-    /* メニューのラジオボタン調整 */
     [data-testid="stSidebar"] div[role="radiogroup"] > label {
         background-color: transparent !important;
         padding: 10px 12px !important;
@@ -79,7 +76,6 @@ st.markdown("""
         color: #FFFFFF !important;
     }
 
-    /* エクスパンダーのダーク化 */
     [data-testid="stExpander"] details {
         background-color: #141A29 !important;
         border: 1px solid #1E273D !important;
@@ -100,7 +96,6 @@ st.markdown("""
         padding: 12px 8px !important;
     }
 
-    /* システム稼働中バッジ（PC用デフォルト） */
     .sidebar-user {
         position: fixed !important;
         bottom: 24px !important;
@@ -143,7 +138,6 @@ st.markdown("""
         gap: 4px;
     }
 
-    /* メインヘッダー */
     .main-title {
         font-size: 1.85rem;
         font-weight: 700;
@@ -157,7 +151,6 @@ st.markdown("""
         margin-bottom: 1rem;
     }
 
-    /* ボタン共通 */
     button[kind="secondary"], 
     button[kind="primary"],
     [data-testid="stButton"] button {
@@ -165,7 +158,7 @@ st.markdown("""
         color: #E2E8F0 !important;
         border: 1px solid #2B354F !important;
         border-radius: 8px !important;
-        padding: 0.55rem 1rem !important;
+        padding: 0.55rem 0.8rem !important;
         font-weight: 600 !important;
         min-height: 42px !important;
     }
@@ -180,7 +173,6 @@ st.markdown("""
         color: #FFFFFF !important;
     }
 
-    /* フォーム・入力枠 */
     [data-testid="stForm"] {
         background-color: #141A29 !important;
         border: 1px solid #1E273D !important;
@@ -212,7 +204,6 @@ st.markdown("""
         min-height: 44px !important;
     }
 
-    /* 保存ボタン（パープル・太字） */
     [data-testid="stFormSubmitButton"] button {
         background-color: #4F46E5 !important;
         color: #FFFFFF !important;
@@ -233,7 +224,6 @@ st.markdown("""
         background-color: #4338CA !important;
     }
 
-    /* KPIカード */
     .kpi-card {
         background: #141A29;
         border: 1px solid #1E273D;
@@ -271,7 +261,6 @@ st.markdown("""
         font-weight: 600;
     }
 
-    /* レースカードスタイル */
     .race-card {
         background: #141A29;
         border: 1px solid #1E273D;
@@ -304,7 +293,6 @@ st.markdown("""
         border: 1px solid #6366F1;
     }
 
-    /* やることリスト用 */
     .step-box {
         background: #141A29;
         border: 1px solid #1E273D;
@@ -330,54 +318,16 @@ st.markdown("""
         border-radius: 999px;
     }
 
-    /* ==========================================
-       📱 スマホ専用レスポンシブ設定 (幅768px以下)
-       ========================================== */
     @media screen and (max-width: 768px) {
-        /* タイトルサイズ縮小 */
-        .main-title {
-            font-size: 1.35rem !important;
-            margin-bottom: 2px !important;
-        }
-        .last-update {
-            font-size: 0.75rem !important;
-            margin-bottom: 0.8rem !important;
-        }
-
-        /* KPIカードのスマホ最適化 */
-        .kpi-card {
-            padding: 0.85rem 1rem !important;
-            margin-bottom: 0.5rem !important;
-            min-height: auto !important;
-        }
-        .kpi-value {
-            font-size: 1.45rem !important;
-        }
-        .kpi-title {
-            font-size: 0.75rem !important;
-        }
-
-        /* スマホ時はバッジの固定を解除しサイドバー最下部に収める */
-        .sidebar-user {
-            position: relative !important;
-            bottom: auto !important;
-            left: auto !important;
-            width: 100% !important;
-            margin-top: 2rem !important;
-        }
-
-        /* フォームのパディング縮小 */
-        [data-testid="stForm"] {
-            padding: 1rem 0.8rem !important;
-        }
-
-        /* 出馬表テーブルの文字サイズと余白をスマホ最適化 */
-        table {
-            font-size: 0.85rem !important;
-        }
-        th, td {
-            padding: 8px 4px !important;
-        }
+        .main-title { font-size: 1.35rem !important; margin-bottom: 2px !important; }
+        .last-update { font-size: 0.75rem !important; margin-bottom: 0.8rem !important; }
+        .kpi-card { padding: 0.85rem 1rem !important; margin-bottom: 0.5rem !important; min-height: auto !important; }
+        .kpi-value { font-size: 1.45rem !important; }
+        .kpi-title { font-size: 0.75rem !important; }
+        .sidebar-user { position: relative !important; bottom: auto !important; left: auto !important; width: 100% !important; margin-top: 2rem !important; }
+        [data-testid="stForm"] { padding: 1rem 0.8rem !important; }
+        table { font-size: 0.85rem !important; }
+        th, td { padding: 8px 4px !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -453,6 +403,53 @@ def load_sheet_data():
 df_target, df_today, df_daily_log = load_sheet_data()
 
 # ==========================================
+# 🌟 運用サイクルのポップアップダイアログ
+# ==========================================
+@st.dialog("🔄 競馬AI 運用サイクル・フロー")
+def show_flow_modal():
+    st.markdown("""
+    <div style="font-size:0.95rem; color:#CBD5E1; line-height:1.6;">
+        「即時性が必要なもの」と「じっくり蓄積する資産」を分けた理想の運用サイクルです。
+    </div>
+    <div style="margin-top:12px;"></div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background:#141A29; border:1px solid #1E273D; border-left:4px solid #6366F1; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
+        <div style="font-weight:700; color:#FFFFFF; font-size:1rem; margin-bottom:4px;">
+            🌅 1. 【朝 9:00】 予測・出撃フェーズ（run.py）
+        </div>
+        <div style="font-size:0.85rem; color:#94A3B8;">
+            <b>・処理</b>: 全レース自動巡回 ➔ 黄金条件（芝1500m+ × 1人気3.5倍未満）合致レースを抽出<br>
+            <b>・反映先</b>: 「本日」「本日勝負レース」シート（作業用キャッシュ）<br>
+            <b>・操作</b>: スマホで「🎯 厳選勝負レース」を確認して馬券購入
+        </div>
+    </div>
+
+    <div style="background:#141A29; border:1px solid #1E273D; border-left:4px solid #10B981; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
+        <div style="font-weight:700; color:#FFFFFF; font-size:1rem; margin-bottom:4px;">
+            🌆 2. 【夕方 16:45/18:45】 収支確定フェーズ（result.py）
+        </div>
+        <div style="font-size:0.85rem; color:#94A3B8;">
+            <b>・処理</b>: 確定着順と馬連配当を自動回収 ➔ AI買い目（各100円）と照合<br>
+            <b>・反映先</b>: 「日次収支」シート（1日1行）<br>
+            <b>・操作</b>: 左メニュー「💰 収支入力・管理」から今日の総購入額と総払戻額を保存
+        </div>
+    </div>
+
+    <div style="background:#141A29; border:1px solid #1E273D; border-left:4px solid #F59E0B; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
+        <div style="font-weight:700; color:#FFFFFF; font-size:1rem; margin-bottom:4px;">
+            🌙 3. 【夜〜週明け】 データ資産蓄積フェーズ
+        </div>
+        <div style="font-size:0.85rem; color:#94A3B8;">
+            <b>・処理</b>: 確定データベースから全レース結果・血統・タイム等を安全に回収<br>
+            <b>・反映先</b>: 「2026年データ」等の年別シート（ビッグデータ蓄積）<br>
+            <b>・目的</b>: 将来のRL:CL比率最適化やAIモデルチューニング用の母数プール
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ==========================================
 # 🗂️ サイドバー メニュー構築
 # ==========================================
 with st.sidebar:
@@ -482,7 +479,7 @@ with st.sidebar:
 # 🚀 画面 1: 📊 ダッシュボード
 # ==========================================
 if menu == "📊 ダッシュボード":
-    col_h_left, col_h_right = st.columns([7, 3])
+    col_h_left, col_h_right = st.columns([6.5, 3.5])
     now_str = datetime.now().strftime("%Y年%m月%d日 %H:%M")
 
     with col_h_left:
@@ -492,9 +489,14 @@ if menu == "📊 ダッシュボード":
         """, unsafe_allow_html=True)
 
     with col_h_right:
-        if st.button("🔄 データ更新", use_container_width=True):
-            st.cache_data.clear()
-            st.rerun()
+        c_help, c_btn = st.columns([1, 2.5])
+        with c_help:
+            if st.button("❓", help="全体の運用フローを確認", use_container_width=True):
+                show_flow_modal()
+        with c_btn:
+            if st.button("🔄 データ更新", use_container_width=True):
+                st.cache_data.clear()
+                st.rerun()
 
     # 実収支データからKPIを計算
     ai_roi, usr_roi = 0.0, 0.0
@@ -530,7 +532,6 @@ if menu == "📊 ダッシュボード":
     
     today_investment = today_target_count * 200
 
-    # スマホでも綺麗に並ぶよう2列×2行のグリッド配置
     c1, c2 = st.columns(2)
     with c1:
         ai_disp = f"{ai_roi:.1f}" if ai_roi > 0 else "128.7"
@@ -580,9 +581,7 @@ if menu == "📊 ダッシュボード":
 
     st.write("")
 
-    # ==========================================
-    # 📈 回収率推移グラフ（スマホレスポンシブ）
-    # ==========================================
+    # 回収率推移グラフ
     col_chart_title, col_chart_select = st.columns([6, 4])
     with col_chart_title:
         st.markdown('<div style="font-size:1.1rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">回収率推移</div>', unsafe_allow_html=True)
@@ -974,7 +973,7 @@ elif menu == "💻 ターミナル操作マニュアル":
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
-# 🗄️ 画面 6: 過去データ分析
+# 🗄️ 過去データ分析
 # ==========================================
 elif menu == "🗄️ 過去データ分析":
     st.markdown('<div class="main-title">過去データバックテスト分析</div>', unsafe_allow_html=True)
@@ -989,7 +988,7 @@ elif menu == "🗄️ 過去データ分析":
     """)
 
 # ==========================================
-# 📈 画面 7: スプレッドシート連携
+# 📈 スプレッドシート連携
 # ==========================================
 elif menu == "📈 スプレッドシート連携":
     st.markdown('<div class="main-title">Google スプレッドシート連携ステータス</div>', unsafe_allow_html=True)
