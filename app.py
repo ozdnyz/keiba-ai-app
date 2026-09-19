@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 カスタムCSS（左右カード完全水平・高コントラスト統一）
+# 🎨 カスタムCSS（左右カード完全水平・枠デザイン完全一致）
 # ==========================================
 st.markdown("""
 <style>
@@ -85,6 +85,7 @@ st.markdown("""
         height: 38px !important;
         min-height: 38px !important;
         align-items: center !important;
+        border-bottom: none !important;
     }
     .stTabs [data-baseweb="tab"] {
         background-color: #141A29 !important;
@@ -107,11 +108,13 @@ st.markdown("""
         color: #FFFFFF !important;
         box-shadow: 0 0 10px rgba(99, 102, 241, 0.4) !important;
     }
+    /* 🌟 タブパネル内の余白をゼロにしてカード開始位置を完全同期 */
     .stTabs [data-baseweb="tab-panel"] {
-        padding: 0 !important;
+        padding: 0px !important;
+        margin: 0px !important;
     }
 
-    /* 🌟 右側のヘッダー（左のタブと全く同じ高さ38px・マージン8pxで枠のすぐ上に配置） */
+    /* 🌟 右側のヘッダー（左のタブと全く同じ高さ38px・枠のすぐ上に配置） */
     .right-card-header {
         height: 38px !important;
         min-height: 38px !important;
@@ -122,6 +125,7 @@ st.markdown("""
         font-weight: 700 !important;
         color: #FFFFFF !important;
         padding: 0 4px !important;
+        border-bottom: none !important;
     }
 
     [data-testid="stExpander"] details {
@@ -226,7 +230,7 @@ st.markdown("""
         padding: 1.4rem !important;
     }
 
-    /* 🌟 リッチKPIカード（高さ165px完全固定・左右水平整列） */
+    /* 🌟 リッチKPIカード（高さ165px完全固定・上下配置・元の枠質感を完全維持） */
     .kpi-rich-card {
         background: #141A29;
         border: 1px solid #1E273D;
@@ -640,7 +644,7 @@ if menu == "📊 ダッシュボード":
             """, unsafe_allow_html=True)
 
     with c2:
-        # 🌟 あなたの実戦の文字を枠のすぐ上にピタッと配置（左のタブと全く同じ高さ38px・下マージン8px）
+        # 🌟 あなたの実戦の文字を枠のすぐ上に配置（左のタブと全く同じ高さ38px）
         st.markdown('<div class="right-card-header">👤 あなたの実戦 通算成績 (実投票)</div>', unsafe_allow_html=True)
 
         if has_real_usr and (usr_tot_inv > 0 or usr_tot_races > 0):
@@ -901,7 +905,7 @@ elif menu == "🏇 全レース出馬表":
                                     if val == '◎': val = "<span style='color: #EF4444; font-weight: 900; font-size: 1.1rem;'>◎</span>"
                                     elif val == '◯': val = "<span style='color: #3B82F6; font-weight: 900; font-size: 1.1rem;'>◯</span>"
                                     elif val == '▲': val = "<span style='color: #10B981; font-weight: 900; font-size: 1.1rem;'>▲</span>"
-                                    elif '△' in str(val): val = f"<span style='color: #F59E0B; font-weight: 900; font-size: 1.1rem;'>{val}</span>"
+                                    elif '△' in str(val): val = f"<span style='color: #F59E0B; font-weight: 900; font-size: 1.05rem;'>{val}</span>"
                                 
                                 if pd.notna(val) and val != "":
                                     try:
@@ -1037,7 +1041,7 @@ elif menu == "💻 ターミナル操作マニュアル":
 
     st.markdown("""
     <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
-        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">⚡ 1. 朝の予想手動実行（全レース巡回）</h4>
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">⚡ 1. 朝の予想手動実行（全レース巡回 ＆ 3点買い選定）</h4>
     """, unsafe_allow_html=True)
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 run.py", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -1047,17 +1051,14 @@ elif menu == "💻 ターミナル操作マニュアル":
         <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🎯 2. 【1レースピンポイント分析】URL不要</h4>
     """, unsafe_allow_html=True)
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 check.py 中山 11", language="bash")
-    st.caption("※「中山 11」を「阪神 10」などに変更可能")
+    st.caption("※芝・ダートを自動判別し、黄金条件合致判定と推奨3点買いを出力")
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("""
     <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
-        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🏁 3. 【手動結果回収】Chromebookを開いていなかった時</h4>
-        <p style="color:#94A3B8; font-size:0.85rem;">当日夜に実行する場合:</p>
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🏁 3. 【手動結果回収】3点買い的中照合 ＆ 日次収支自動集計</h4>
     """, unsafe_allow_html=True)
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 result.py", language="bash")
-    st.markdown('<p style="color:#94A3B8; font-size:0.85rem; margin-top:8px;">過去日を指定して遡り回収する場合:</p>', unsafe_allow_html=True)
-    st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 result.py 20260913", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("""
@@ -1082,7 +1083,7 @@ elif menu == "💻 ターミナル操作マニュアル":
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
-# 🗄️ 過去データ分析（🌟 確定黄金条件 2022〜2026年 5年検証版へ復元）
+# 🗄️ 過去データ分析（🌟 確定黄金条件 2022〜2026年 5年検証版テーブルに完全復元）
 # ==========================================
 elif menu == "🗄️ 過去データ分析":
     st.markdown('<div class="main-title">過去データバックテスト分析（2022〜2026年）</div>', unsafe_allow_html=True)
