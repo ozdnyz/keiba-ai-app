@@ -77,11 +77,7 @@ st.markdown("""
     }
 
     /* 🌟 タブデザイン（高コントラスト・文字がクッキリ見える純白仕様） */
-    [data-testid="stTabs"] {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    div[data-baseweb="tab-list"] {
+    .stTabs [data-baseweb="tab-list"] {
         gap: 8px !important;
         background-color: transparent !important;
         margin-bottom: 8px !important;
@@ -91,7 +87,7 @@ st.markdown("""
         align-items: center !important;
         border-bottom: none !important;
     }
-    div[data-baseweb="tab"] {
+    .stTabs [data-baseweb="tab"] {
         background-color: #141A29 !important;
         border: 1px solid #2B354F !important;
         border-radius: 8px !important;
@@ -101,30 +97,27 @@ st.markdown("""
         font-weight: 700 !important;
         height: 34px !important;
     }
-    div[data-baseweb="tab"]:hover {
+    .stTabs [data-baseweb="tab"]:hover {
         color: #FFFFFF !important;
         border-color: #6366F1 !important;
         background-color: #1A2238 !important;
     }
-    div[data-baseweb="tab"][aria-selected="true"] {
+    .stTabs [aria-selected="true"] {
         background-color: #1E2238 !important;
         border-color: #6366F1 !important;
         color: #FFFFFF !important;
         box-shadow: 0 0 10px rgba(99, 102, 241, 0.4) !important;
     }
-    div[data-baseweb="tab-border"], div[data-baseweb="tab-highlight"] {
-        display: none !important;
-    }
-    div[data-baseweb="tab-panel"], div[role="tabpanel"], div[data-testid="stTabContent"] {
+    /* 🌟 タブパネル内の余白をゼロにしてカード開始位置を完全同期 */
+    .stTabs [data-baseweb="tab-panel"] {
         padding: 0px !important;
         margin: 0px !important;
     }
 
     /* 🌟 右側のヘッダー（左のタブと全く同じ高さ38px・枠のすぐ上に配置） */
     .right-card-header {
-        height: 38px !important;
+        height: 48px !important;
         min-height: 38px !important;
-        max-height: 38px !important;
         margin-bottom: 8px !important;
         display: flex !important;
         align-items: center !important;
@@ -132,7 +125,7 @@ st.markdown("""
         font-weight: 700 !important;
         color: #FFFFFF !important;
         padding: 0 4px !important;
-        box-sizing: border-box !important;
+        border-bottom: none !important;
     }
 
     [data-testid="stExpander"] details {
@@ -239,18 +232,18 @@ st.markdown("""
 
     /* 🌟 リッチKPIカード（高さ165px完全固定・上下配置・元の枠質感を完全維持） */
     .kpi-rich-card {
-        background: #141A29 !important;
-        border: 1px solid #1E273D !important;
-        border-radius: 14px !important;
-        padding: 1.1rem 1.25rem !important;
-        margin-bottom: 0.8rem !important;
+        background: #141A29;
+        border: 1px solid #1E273D;
+        border-radius: 14px;
+        padding: 1.1rem 1.25rem;
+        margin-bottom: 0.8rem;
         height: 165px !important;
         min-height: 165px !important;
         max-height: 165px !important;
         box-sizing: border-box !important;
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: space-between !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
     .kpi-rich-title {
         font-size: 0.88rem;
@@ -413,7 +406,7 @@ def show_flow_modal():
         <div style="font-size:1.05rem; font-weight:700; color:#FFFFFF; margin-bottom:8px;">🌆 2. 【夕方 17:00】 収支確定フェーズ（result.py）</div>
         <div style="font-size:0.9rem; color:#F3F4F6; line-height:1.7;">
             <span style="color:#34D399; font-weight:700;">・処理</span>: 確定着順と馬連配当を自動回収 ➔ AI買い目（各100円）と照合<br>
-            <span style="color:#34D399; font-weight:700;">・反映先</span>: 「日次収支」シート（総合・芝・ダートを自動分別記録）<br>
+            <span style="color:#34D399; font-weight:700;">・反映先</span>: 「日次収支」シート（1日1行）<br>
             <span style="color:#34D399; font-weight:700;">・操作</span>: 左メニュー「💰 収支入力・管理」から今日の総購入額と総払戻額を保存
         </div>
     </div>
@@ -476,7 +469,7 @@ if menu == "📊 ダッシュボード":
                 st.rerun()
 
     # ==========================================
-    # 📊 実データ集計ロジック（総合・芝・ダートを自動抽出）
+    # 📊 実データ集計ロジック（スプレッドシート完全連動）
     # ==========================================
     has_real_ai = False
     has_real_usr = False
@@ -493,7 +486,7 @@ if menu == "📊 ダッシュボード":
             if any(k in col for k in ['投資', '回収', '払戻', 'レース', '的中', 'R数']):
                 df_daily_calc[col] = pd.to_numeric(df_daily_calc[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
 
-        # ユーザー実戦データ取得
+        # 1. ユーザー実戦データ取得
         if 'ユーザー投資額' in df_daily_calc.columns:
             usr_tot_inv = int(df_daily_calc['ユーザー投資額'].sum())
             usr_tot_ret = int(df_daily_calc['ユーザー回収額'].sum())
@@ -508,7 +501,7 @@ if menu == "📊 ダッシュボード":
         if usr_tot_inv > 0 or usr_tot_races > 0:
             has_real_usr = True
 
-        # 総合データ取得
+        # 2. AI理論 総合データの取得
         if 'AI投資額' in df_daily_calc.columns and df_daily_calc['AI投資額'].sum() > 0:
             ai_all_inv = int(df_daily_calc['AI投資額'].sum())
             ai_all_ret = int(df_daily_calc['AI回収額'].sum())
@@ -523,7 +516,7 @@ if menu == "📊 ダッシュボード":
             if ai_all_inv > 0 or ai_all_races > 0:
                 has_real_ai = True
 
-        # 芝・ダート別の実データ取得
+        # 3. 芝・ダート別の実データ集計
         if 'AI芝投資額' in df_daily_calc.columns:
             ai_turf_inv = int(df_daily_calc['AI芝投資額'].sum())
             ai_turf_ret = int(df_daily_calc['AI芝回収額'].sum())
@@ -651,7 +644,7 @@ if menu == "📊 ダッシュボード":
             """, unsafe_allow_html=True)
 
     with c2:
-        # 🌟 あなたの実戦の文字を枠のすぐ上に配置（左タブと完全同一の高さ38px・下マージン8px）
+        # 🌟 あなたの実戦の文字を枠のすぐ上に配置（左のタブと全く同じ高さ38px）
         st.markdown('<div class="right-card-header">👤 あなたの実戦 通算成績 (実投票)</div>', unsafe_allow_html=True)
 
         if has_real_usr and (usr_tot_inv > 0 or usr_tot_races > 0):
@@ -719,7 +712,7 @@ if menu == "📊 ダッシュボード":
     st.write("")
 
     # ==========================================
-    # 📈 回収率推移グラフ（🌟 0%の緑の点もしっかり描画）
+    # 📈 回収率推移グラフ（🌟 0%の緑の点もしっかり描画修正）
     # ==========================================
     col_chart_title, col_chart_select = st.columns([6, 4])
     with col_chart_title:
@@ -738,22 +731,22 @@ if menu == "📊 ダッシュボード":
         df_plot = df_plot.dropna(subset=['日付_dt']).sort_values('日付_dt').reset_index(drop=True)
 
         if not df_plot.empty:
-            # 🌟 回収額が0円でも列を正しく認識
             ai_inv_col = 'AI投資額' if 'AI投資額' in df_plot.columns else ('投資額' if '投資額' in df_plot.columns else '')
             ai_ret_col = 'AI回収額' if 'AI回収額' in df_plot.columns else ('払戻額' if '払戻額' in df_plot.columns else '')
+            # 🌟 回収額が0でも投資があれば列を正しく認識
             usr_inv_col = 'ユーザー投資額' if 'ユーザー投資額' in df_plot.columns else ('投資額' if '投資額' in df_plot.columns else '')
             usr_ret_col = 'ユーザー回収額' if 'ユーザー回収額' in df_plot.columns else ('払戻額' if '払戻額' in df_plot.columns else '')
 
             if chart_mode == "日毎 (直近10日)":
                 sub_df = df_plot.tail(10).copy()
+                x_vals = sub_df['日付_dt'].dt.strftime('%m/%d').tolist()
             elif chart_mode == "日毎 (直近30日)":
                 sub_df = df_plot.tail(30).copy()
+                x_vals = sub_df['日付_dt'].dt.strftime('%m/%d').tolist()
             else:
                 sub_df = df_plot.copy()
+                x_vals = sub_df['日付_dt'].dt.strftime('%m/%d').tolist()
 
-            x_vals = sub_df['日付_dt'].dt.strftime('%m/%d').tolist()
-
-            # AI理論の推移
             if ai_inv_col and ai_ret_col and sub_df[ai_inv_col].sum() > 0:
                 sub_df['AI_CUM_I'] = sub_df[ai_inv_col].cumsum()
                 sub_df['AI_CUM_R'] = sub_df[ai_ret_col].cumsum()
@@ -767,7 +760,7 @@ if menu == "📊 ダッシュボード":
                     hovertemplate="%{x}<br>AI: %{y:.1f}%<extra></extra>"
                 ))
 
-            # 🌟 あなたの実戦の推移（投資があれば回収0円でも緑の点を描画）
+            # 🌟 あなたの実戦推移（投資額が0より大きければ、回収額が0でも緑の点を出力）
             if usr_inv_col and usr_ret_col and sub_df[usr_inv_col].sum() > 0:
                 sub_df['USR_CUM_I'] = sub_df[usr_inv_col].cumsum()
                 sub_df['USR_CUM_R'] = sub_df[usr_ret_col].cumsum()
@@ -808,6 +801,7 @@ if menu == "📊 ダッシュボード":
         font=dict(color="#94A3B8", size=11),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=11, color="#CBD5E1")),
         xaxis=dict(showgrid=True, gridcolor="#1E273D", zeroline=False),
+        # 🌟 0%の点が半分見切れないよう yaxis の下限を -8 に調整
         yaxis=dict(showgrid=True, gridcolor="#1E273D", zeroline=True, zerolinecolor="#334155", ticksuffix="%", range=[-8, 115]),
         hovermode="x unified"
     )
@@ -979,8 +973,14 @@ elif menu == "💰 収支入力・管理":
                     try:
                         ws = ss.worksheet("日次収支")
                     except:
-                        ws = ss.add_worksheet(title="日次収支", rows="500", cols="17")
-                        ws.append_row(["日付", "AI投資額", "AI回収額", "AI芝投資額", "AI芝回収額", "AIダート投資額", "AIダート回収額", "ユーザー投資額", "ユーザー回収額", "AIレース数", "AI的中数", "AI芝レース数", "AI芝的中数", "AIダートレース数", "AIダート的中数", "ユーザーレース数", "ユーザー的中数"])
+                        ws = ss.add_worksheet(title="日次収支", rows="500", cols="10")
+                        ws.append_row(["日付", "AI投資額", "AI回収額", "ユーザー投資額", "ユーザー回収額", "AIレース数", "AI的中数", "ユーザーレース数", "ユーザー的中数"])
+
+                    cur_h = ws.row_values(1)
+                    if len(cur_h) < 9:
+                        std_h = ["日付", "AI投資額", "AI回収額", "ユーザー投資額", "ユーザー回収額", "AIレース数", "AI的中数", "ユーザーレース数", "ユーザー的中数"]
+                        for idx_h, h_val in enumerate(std_h, start=1):
+                            ws.update_cell(1, idx_h, h_val)
 
                     records = ws.get_all_values()
                     found_row = -1
@@ -989,7 +989,6 @@ elif menu == "💰 収支入力・管理":
                             found_row = i + 1
                             break
                     
-                    # 🌟 1行目のヘッダー名から正しい列番号を自動検出（ズレを完全防止）
                     headers = ws.row_values(1)
                     def get_col(name, default_idx):
                         return headers.index(name) + 1 if name in headers else default_idx
@@ -1079,6 +1078,27 @@ elif menu == "💻 ターミナル操作マニュアル":
         <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🏁 3. 【手動結果回収】3点買い的中照合 ＆ 日次収支自動集計</h4>
     """, unsafe_allow_html=True)
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 result.py", language="bash")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">📅 4. 過去日付の予想シミュレーション</h4>
+    """, unsafe_allow_html=True)
+    st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 run.py 20260912 20260913", language="bash")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">⏰ 5. 自動タイマーの実行ログ確認</h4>
+    """, unsafe_allow_html=True)
+    st.code("cat /home/ozdnyzww1/keiba_cron.log", language="bash")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🧹 6. メモリ解放 ＆ 停止コマンド（緊急用）</h4>
+    """, unsafe_allow_html=True)
+    st.code("killall -9 chromium chromium-driver chromedriver chrome 2>/dev/null", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
