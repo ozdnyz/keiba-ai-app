@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 カスタムCSS
+# 🎨 カスタムCSS（左右カード完全水平・高コントラスト統一）
 # ==========================================
 st.markdown("""
 <style>
@@ -76,23 +76,25 @@ st.markdown("""
         color: #FFFFFF !important;
     }
 
-    /* 🌟 タブデザイン（高コントラスト・文字がハッキリ見える調整） */
+    /* 🌟 タブデザイン（高コントラスト・文字がクッキリ見える純白仕様） */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px !important;
         background-color: transparent !important;
-        margin-bottom: 10px !important;
+        margin-bottom: 8px !important;
         padding: 0 !important;
         height: 38px !important;
+        min-height: 38px !important;
         align-items: center !important;
     }
     .stTabs [data-baseweb="tab"] {
         background-color: #141A29 !important;
         border: 1px solid #2B354F !important;
         border-radius: 8px !important;
-        color: #F3F4F6 !important; /* 明るい白！非アクティブでもクッキリ読める */
-        padding: 5px 14px !important;
+        color: #F3F4F6 !important; /* クッキリ純白！非アクティブでも鮮明 */
+        padding: 6px 14px !important;
         font-size: 0.88rem !important;
         font-weight: 700 !important;
+        height: 34px !important;
     }
     .stTabs [data-baseweb="tab"]:hover {
         color: #FFFFFF !important;
@@ -105,18 +107,21 @@ st.markdown("""
         color: #FFFFFF !important;
         box-shadow: 0 0 10px rgba(99, 102, 241, 0.4) !important;
     }
+    .stTabs [data-baseweb="tab-panel"] {
+        padding: 0 !important;
+    }
 
-    /* 右側の高さ同期スペーサー */
-    .right-header-aligner {
-        height: 38px;
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        margin-bottom: 10px;
-        font-size: 0.82rem;
-        font-weight: 600;
-        color: #10B981;
-        padding-right: 4px;
+    /* 🌟 右側のヘッダー（左のタブと全く同じ高さ38px・マージン8pxで枠のすぐ上に配置） */
+    .right-card-header {
+        height: 38px !important;
+        min-height: 38px !important;
+        margin-bottom: 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        font-size: 0.95rem !important;
+        font-weight: 700 !important;
+        color: #FFFFFF !important;
+        padding: 0 4px !important;
     }
 
     [data-testid="stExpander"] details {
@@ -221,14 +226,17 @@ st.markdown("""
         padding: 1.4rem !important;
     }
 
-    /* 🌟 リッチKPIカード（高さを左右一致・コントラスト強調） */
+    /* 🌟 リッチKPIカード（高さ165px完全固定・左右水平整列） */
     .kpi-rich-card {
         background: #141A29;
         border: 1px solid #1E273D;
         border-radius: 14px;
         padding: 1.1rem 1.25rem;
         margin-bottom: 0.8rem;
-        min-height: 158px !important;
+        height: 165px !important;
+        min-height: 165px !important;
+        max-height: 165px !important;
+        box-sizing: border-box !important;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -504,7 +512,7 @@ if menu == "📊 ダッシュボード":
             if ai_all_inv > 0 or ai_all_races > 0:
                 has_real_ai = True
 
-        # 3. 芝・ダート別の実データ集計（日次収支または勝負レースシートから）
+        # 3. 芝・ダート別の実データ集計
         if 'AI芝投資額' in df_daily_calc.columns:
             ai_turf_inv = int(df_daily_calc['AI芝投資額'].sum())
             ai_turf_ret = int(df_daily_calc['AI芝回収額'].sum())
@@ -549,12 +557,11 @@ if menu == "📊 ダッシュボード":
     today_investment = today_target_count * 300
 
     # ==========================================
-    # 🌟 メインKPIカード（左右の段差ゼロ・実データ完全反映）
+    # 🌟 メインKPIカード（左右完全水平整列 ＆ 枠のすぐ上見出し）
     # ==========================================
     c1, c2 = st.columns(2)
 
     with c1:
-        st.markdown('<div style="font-size:0.95rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">🤖 AI理論 パフォーマンス (馬連3点 / 各100円)</div>', unsafe_allow_html=True)
         tab_all, tab_turf, tab_dirt = st.tabs(["🌐 総合", "🟢 芝", "🟤 ダート"])
 
         # 1. 総合
@@ -633,9 +640,8 @@ if menu == "📊 ダッシュボード":
             """, unsafe_allow_html=True)
 
     with c2:
-        st.markdown('<div style="font-size:0.95rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">👤 あなたの実戦 通算成績 (実投票)</div>', unsafe_allow_html=True)
-        # 🌟 左のタブ（高38px + マージン10px）と完全に高さを揃えるアライナー
-        st.markdown('<div class="right-header-aligner">● 日次収支シート自動同期中</div>', unsafe_allow_html=True)
+        # 🌟 あなたの実戦の文字を枠のすぐ上にピタッと配置（左のタブと全く同じ高さ38px・下マージン8px）
+        st.markdown('<div class="right-card-header">👤 あなたの実戦 通算成績 (実投票)</div>', unsafe_allow_html=True)
 
         if has_real_usr and (usr_tot_inv > 0 or usr_tot_races > 0):
             usr_profit = usr_tot_ret - usr_tot_inv
@@ -719,7 +725,6 @@ if menu == "📊 ダッシュボード":
         df_plot = df_plot.dropna(subset=['日付_dt']).sort_values('日付_dt').reset_index(drop=True)
 
         if not df_plot.empty:
-            # カラム自動判定
             ai_inv_col = 'AI投資額' if 'AI投資額' in df_plot.columns else ('投資額' if '投資額' in df_plot.columns else '')
             ai_ret_col = 'AI回収額' if 'AI回収額' in df_plot.columns else ('払戻額' if '払戻額' in df_plot.columns else '')
             usr_inv_col = 'ユーザー投資額' if 'ユーザー投資額' in df_plot.columns and df_plot['ユーザー投資額'].sum() > 0 else ('投資額' if '投資額' in df_plot.columns else '')
@@ -1077,18 +1082,18 @@ elif menu == "💻 ターミナル操作マニュアル":
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
-# 🗄️ 過去データ分析
+# 🗄️ 過去データ分析（🌟 確定黄金条件 2022〜2026年 5年検証版へ復元）
 # ==========================================
 elif menu == "🗄️ 過去データ分析":
-    st.markdown('<div class="main-title">過去データバックテスト分析</div>', unsafe_allow_html=True)
-    st.markdown('<div class="last-update">210,000件のビッグデータ検証結果</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-title">過去データバックテスト分析（2022〜2026年）</div>', unsafe_allow_html=True)
+    st.markdown('<div class="last-update">5年間・107,000行の実データ検証による確定黄金条件</div>', unsafe_allow_html=True)
     
     st.markdown("""
-    | 検証項目 | 検証ルール | 回収率 | 連対率 |
-    | :--- | :--- | :---: | :---: |
-    | **黄金条件合致（全体）** | 芝1500m以上 × 1人気3.5倍未満 × 馬連2点 | **128.7%** | **42.9%** |
-    | **点①（◎ - ◯）** | 本線・実力上位の組み合わせ | 64.8% | 31.2% |
-    | **点②（◎ - △1）** | 期待値・適性上位の伏兵狙い | **163.9%** | 11.7% |
+    | トラック | 黄金条件ルール | 買い目 | 通算回収率 | 的中率 | 安定度 |
+    | :--- | :--- | :---: | :---: | :---: | :---: |
+    | **🟢 芝** | **全距離 × 1人気 2.0〜3.5倍** | 馬連3点（◎-◯, ▲, △1） | **148.7%** | **17.8%** | 直近4年連続120%超 |
+    | **🟤 ダート** | **全距離 × 1人気 3.5倍未満 × 軸中外枠** | 馬連3点（◎-◯, ▲, △1） | **256.9%** | **22.1%** | **5/5年連続プラス** |
+    | **🌐 総合** | **上記2大条件の完全合算** | 馬連3点（計300円） | **190.6%** | **19.5%** | **通算純益 +165万円** |
     """)
 
 # ==========================================
