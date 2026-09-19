@@ -151,6 +151,7 @@ st.markdown("""
         margin-bottom: 1rem;
     }
 
+    /* ボタン共通 */
     button[kind="secondary"], 
     button[kind="primary"],
     [data-testid="stButton"] button {
@@ -166,9 +167,6 @@ st.markdown("""
     [data-testid="stButton"] button:hover {
         background-color: #1E273D !important;
         border-color: #6366F1 !important;
-    }
-    [data-testid="stButton"] button:hover p {
-        color: #FFFFFF !important;
     }
 
     div[class*="st-key-help_modal_btn"] button {
@@ -198,20 +196,49 @@ st.markdown("""
         justify-content: center !important;
     }
 
+    /* 🌟 フォーム送信ボタン（白飛びを完全に防止する強力な上書き） */
+    .stForm [data-testid="stFormSubmitButton"] button,
+    [data-testid="stFormSubmitButton"] button,
+    button[kind="formSubmit"] {
+        background-color: #4F46E5 !important;
+        background: #4F46E5 !important;
+        border: 1px solid #6366F1 !important;
+        border-radius: 8px !important;
+        padding: 0.65rem 1.6rem !important;
+        font-weight: 700 !important;
+        min-height: 48px !important;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.45) !important;
+        width: 100% !important;
+    }
+    .stForm [data-testid="stFormSubmitButton"] button *,
+    [data-testid="stFormSubmitButton"] button p,
+    [data-testid="stFormSubmitButton"] button span {
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
+        font-size: 1.05rem !important;
+    }
+    .stForm [data-testid="stFormSubmitButton"] button:hover {
+        background-color: #4338CA !important;
+        background: #4338CA !important;
+    }
+
+    /* フォーム外枠 */
+    [data-testid="stForm"] {
+        background-color: #141A29 !important;
+        border: 1px solid #1E273D !important;
+        border-radius: 12px !important;
+        padding: 1.4rem !important;
+    }
+
+    /* ダイアログ内 */
     div[role="dialog"],
     div[data-testid="stDialog"] > div {
         background-color: #0E1322 !important;
         border: 1px solid #2B354F !important;
         border-radius: 12px !important;
     }
-    div[role="dialog"] h2,
-    div[role="dialog"] [data-testid="stHeading"] {
-        color: #FFFFFF !important;
-        font-weight: 700 !important;
-    }
-    div[role="dialog"] button[aria-label="Close"] {
-        color: #94A3B8 !important;
-    }
+    div[role="dialog"] h2 { color: #FFFFFF !important; font-weight: 700 !important; }
+    div[role="dialog"] button[aria-label="Close"] { color: #94A3B8 !important; }
 
     .flow-lead {
         font-size: 1rem !important;
@@ -230,24 +257,14 @@ st.markdown("""
     .flow-box-1 { border-left: 5px solid #6366F1 !important; }
     .flow-box-2 { border-left: 5px solid #10B981 !important; }
     .flow-box-3 { border-left: 5px solid #F59E0B !important; }
-
-    .flow-title {
-        font-size: 1.05rem !important;
-        font-weight: 700 !important;
-        color: #FFFFFF !important;
-        margin-bottom: 8px !important;
-    }
-    .flow-desc {
-        font-size: 0.9rem !important;
-        color: #F3F4F6 !important;
-        line-height: 1.7 !important;
-    }
+    .flow-title { font-size: 1.05rem !important; font-weight: 700 !important; color: #FFFFFF !important; margin-bottom: 8px !important; }
+    .flow-desc { font-size: 0.9rem !important; color: #F3F4F6 !important; line-height: 1.7 !important; }
     .flow-text { color: #F3F4F6 !important; }
     .flow-tag-1 { color: #818CF8 !important; font-weight: 700 !important; }
     .flow-tag-2 { color: #34D399 !important; font-weight: 700 !important; }
     .flow-tag-3 { color: #FBBF24 !important; font-weight: 700 !important; }
 
-    /* 🌟 リッチKPIカード */
+    /* リッチKPIカード */
     .kpi-rich-card {
         background: #141A29;
         border: 1px solid #1E273D;
@@ -295,14 +312,8 @@ st.markdown("""
         flex-wrap: wrap;
         gap: 4px;
     }
-    .kpi-profit-pos {
-        color: #10B981;
-        font-weight: 700;
-    }
-    .kpi-profit-neg {
-        color: #EF4444;
-        font-weight: 700;
-    }
+    .kpi-profit-pos { color: #10B981; font-weight: 700; }
+    .kpi-profit-neg { color: #EF4444; font-weight: 700; }
 
     .race-card {
         background: #141A29;
@@ -321,11 +332,7 @@ st.markdown("""
         flex-wrap: wrap;
         gap: 6px;
     }
-    .race-name {
-        font-size: 1.05rem;
-        font-weight: 700;
-        color: #FFFFFF;
-    }
+    .race-name { font-size: 1.05rem; font-weight: 700; color: #FFFFFF; }
     .race-badge {
         background-color: #1E2238;
         color: #6366F1;
@@ -532,7 +539,7 @@ if menu == "📊 ダッシュボード":
                 st.cache_data.clear()
                 st.rerun()
 
-    # 実収支データから詳細集計（回収率・的中率・金額）
+    # 実収支データから詳細集計
     has_real_data = False
     ai_tot_inv, ai_tot_ret, ai_tot_races, ai_tot_hits = 0, 0, 0, 0
     usr_tot_inv, usr_tot_ret, usr_tot_races, usr_tot_hits = 0, 0, 0, 0
@@ -581,7 +588,7 @@ if menu == "📊 ダッシュボード":
     
     today_investment = today_target_count * 200
 
-    # 🌟 メインKPIカード（AI成績 vs あなたの実績）
+    # メインKPIカード
     c1, c2 = st.columns(2)
     with c1:
         if has_real_data and ai_tot_inv > 0:
@@ -673,7 +680,7 @@ if menu == "📊 ダッシュボード":
             </div>
             """, unsafe_allow_html=True)
 
-    # サブカード（勝負レース数 ＆ 推奨投資額）
+    # サブカード
     c3, c4 = st.columns(2)
     with c3:
         st.markdown(f"""
@@ -937,28 +944,36 @@ elif menu == "🏇 全レース出馬表":
         st.info("スプレッドシートに最新の全頭データがありません。")
 
 # ==========================================
-# 💰 画面 4: 収支入力・管理（的中数・レース数対応版）
+# 💰 画面 4: 収支入力・管理（🌟 文字＆ボタン完全純白対応版）
 # ==========================================
 elif menu == "💰 収支入力・管理":
     st.markdown('<div class="main-title">日次実収支の記録</div>', unsafe_allow_html=True)
     st.markdown('<div class="last-update">一日の終わりに、今日の購入実績（金額・レース数・的中数）を入力して保存してください</div>', unsafe_allow_html=True)
 
     with st.form("shushi_form"):
-        target_date = st.date_input("🗓️ 競馬開催日", datetime.now())
+        # 1. 開催日
+        st.markdown('<div style="font-size:0.95rem; font-weight:700; color:#FFFFFF; margin-bottom:6px;">🗓️ 競馬開催日</div>', unsafe_allow_html=True)
+        target_date = st.date_input("開催日", datetime.now(), label_visibility="collapsed")
         
-        st.markdown("<span style='font-size:0.85rem; color:#CBD5E1; font-weight:600;'>【収支金額】</span>", unsafe_allow_html=True)
+        # 2. 収支金額
+        st.markdown('<div style="font-size:0.9rem; font-weight:700; color:#818CF8; margin-top:14px; margin-bottom:8px;">【収支金額】</div>', unsafe_allow_html=True)
         c_in1, c_in2 = st.columns(2)
         with c_in1:
-            usr_inv = st.number_input("💸 今日の総購入額 (円)", min_value=0, value=0, step=100)
+            st.markdown('<div style="font-size:0.9rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">💸 今日の総購入額 (円)</div>', unsafe_allow_html=True)
+            usr_inv = st.number_input("総購入額", min_value=0, value=0, step=100, label_visibility="collapsed")
         with c_in2:
-            usr_ret = st.number_input("💰 今日の総払戻額 (円)", min_value=0, value=0, step=100)
+            st.markdown('<div style="font-size:0.9rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">💰 今日の総払戻額 (円)</div>', unsafe_allow_html=True)
+            usr_ret = st.number_input("総払戻額", min_value=0, value=0, step=100, label_visibility="collapsed")
         
-        st.markdown("<span style='font-size:0.85rem; color:#CBD5E1; font-weight:600;'>【的中率カウント】</span>", unsafe_allow_html=True)
+        # 3. 的中率カウント
+        st.markdown('<div style="font-size:0.9rem; font-weight:700; color:#34D399; margin-top:14px; margin-bottom:8px;">【的中率カウント】</div>', unsafe_allow_html=True)
         c_in3, c_in4 = st.columns(2)
         with c_in3:
-            usr_races = st.number_input("🏇 実際に購入したレース数", min_value=0, value=0, step=1)
+            st.markdown('<div style="font-size:0.9rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">🏇 実際に購入したレース数</div>', unsafe_allow_html=True)
+            usr_races = st.number_input("購入レース数", min_value=0, value=0, step=1, label_visibility="collapsed")
         with c_in4:
-            usr_hits = st.number_input("🎯 的中したレース数", min_value=0, value=0, step=1)
+            st.markdown('<div style="font-size:0.9rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">🎯 的中したレース数</div>', unsafe_allow_html=True)
+            usr_hits = st.number_input("的中レース数", min_value=0, value=0, step=1, label_visibility="collapsed")
         
         st.write("")
         submit = st.form_submit_button("💾 スプレッドシートに保存")
@@ -975,7 +990,6 @@ elif menu == "💰 収支入力・管理":
                         ws = ss.add_worksheet(title="日次収支", rows="500", cols="10")
                         ws.append_row(["日付", "AI投資額", "AI回収額", "ユーザー投資額", "ユーザー回収額", "AIレース数", "AI的中数", "ユーザーレース数", "ユーザー的中数"])
 
-                    # ヘッダー拡張チェック
                     cur_h = ws.row_values(1)
                     if len(cur_h) < 9:
                         std_h = ["日付", "AI投資額", "AI回収額", "ユーザー投資額", "ユーザー回収額", "AIレース数", "AI的中数", "ユーザーレース数", "ユーザー的中数"]
