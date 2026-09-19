@@ -984,14 +984,30 @@ elif menu == "💰 収支入力・管理":
                             found_row = i + 1
                             break
                     
+                    # 🌟 1行目のヘッダー名から正しい列番号を自動検出（ズレを完全防止）
+                    headers = ws.row_values(1)
+                    def get_col(name, default_idx):
+                        return headers.index(name) + 1 if name in headers else default_idx
+
+                    col_u_inv = get_col("ユーザー投資額", 8)    # H列
+                    col_u_ret = get_col("ユーザー回収額", 9)    # I列
+                    col_u_races = get_col("ユーザーレース数", 16) # P列
+                    col_u_hits = get_col("ユーザー的中数", 17)   # Q列
+
                     if found_row != -1:
-                        ws.update_cell(found_row, 4, usr_inv)
-                        ws.update_cell(found_row, 5, usr_ret)
-                        ws.update_cell(found_row, 8, usr_races)
-                        ws.update_cell(found_row, 9, usr_hits)
+                        # 正しいセルにそれぞれ書き込み
+                        ws.update_cell(found_row, col_u_inv, usr_inv)
+                        ws.update_cell(found_row, col_u_ret, usr_ret)
+                        ws.update_cell(found_row, col_u_races, usr_races)
+                        ws.update_cell(found_row, col_u_hits, usr_hits)
                         st.success(f"✅ {date_str} の実戦記録を更新しました！（投資: {usr_inv:,}円 / 回収: {usr_ret:,}円 / 的中: {usr_hits}/{usr_races}R）")
                     else:
-                        ws.append_row([date_str, 0, 0, usr_inv, usr_ret, 0, 0, usr_races, usr_hits])
+                        new_row = [date_str] + [0] * max(0, len(headers) - 1)
+                        if len(new_row) >= col_u_inv: new_row[col_u_inv - 1] = usr_inv
+                        if len(new_row) >= col_u_ret: new_row[col_u_ret - 1] = usr_ret
+                        if len(new_row) >= col_u_races: new_row[col_u_races - 1] = usr_races
+                        if len(new_row) >= col_u_hits: new_row[col_u_hits - 1] = usr_hits
+                        ws.append_row(new_row)
                         st.success(f"✅ {date_str} の実戦記録を新規保存しました！（投資: {usr_inv:,}円 / 回収: {usr_ret:,}円 / 的中: {usr_hits}/{usr_races}R）")
                     
                     st.cache_data.clear()
