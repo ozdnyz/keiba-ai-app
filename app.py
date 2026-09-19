@@ -116,7 +116,7 @@ st.markdown("""
 
     /* 🌟 右側のヘッダー（左のタブと全く同じ高さ38px・枠のすぐ上に配置） */
     .right-card-header {
-        height: 47px !important;
+        height: 48px !important;
         min-height: 38px !important;
         margin-bottom: 8px !important;
         display: flex !important;
