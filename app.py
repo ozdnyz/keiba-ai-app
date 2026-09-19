@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 カスタムCSS（左右カード完全水平・枠デザイン完全一致）
+# 🎨 カスタムCSS（左右カード完全水平整列・枠デザイン維持）
 # ==========================================
 st.markdown("""
 <style>
@@ -76,8 +76,12 @@ st.markdown("""
         color: #FFFFFF !important;
     }
 
-    /* 🌟 タブデザイン（高コントラスト・文字がクッキリ見える純白仕様） */
-    .stTabs [data-baseweb="tab-list"] {
+    /* 🌟 タブコンテナ＆パネルの余白完全リセット（ズレの根本原因を解消） */
+    [data-testid="stTabs"] {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    div[data-baseweb="tab-list"] {
         gap: 8px !important;
         background-color: transparent !important;
         margin-bottom: 8px !important;
@@ -87,66 +91,100 @@ st.markdown("""
         align-items: center !important;
         border-bottom: none !important;
     }
-    .stTabs [data-baseweb="tab"] {
+    div[data-baseweb="tab"] {
         background-color: #141A29 !important;
         border: 1px solid #2B354F !important;
         border-radius: 8px !important;
-        color: #F3F4F6 !important; /* クッキリ純白！非アクティブでも鮮明 */
+        color: #F3F4F6 !important; /* クッキリ純白 */
         padding: 6px 14px !important;
         font-size: 0.88rem !important;
         font-weight: 700 !important;
         height: 34px !important;
     }
-    .stTabs [data-baseweb="tab"]:hover {
+    div[data-baseweb="tab"]:hover {
         color: #FFFFFF !important;
         border-color: #6366F1 !important;
         background-color: #1A2238 !important;
     }
-    .stTabs [aria-selected="true"] {
+    div[data-baseweb="tab"][aria-selected="true"] {
         background-color: #1E2238 !important;
         border-color: #6366F1 !important;
         color: #FFFFFF !important;
         box-shadow: 0 0 10px rgba(99, 102, 241, 0.4) !important;
     }
-    /* 🌟 タブパネル内の余白をゼロにしてカード開始位置を完全同期 */
-    .stTabs [data-baseweb="tab-panel"] {
+    div[data-baseweb="tab-border"], div[data-baseweb="tab-highlight"] {
+        display: none !important;
+    }
+    div[data-baseweb="tab-panel"], div[role="tabpanel"], div[data-testid="stTabContent"] {
         padding: 0px !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
         margin: 0px !important;
+        margin-top: 0px !important;
     }
 
-    /* 🌟 右側のヘッダー（左のタブと全く同じ高さ38px・枠のすぐ上に配置） */
+    /* 🌟 右側見出し：左のタブと全く同じ高さ(38px)＆下マージン(8px)で枠のすぐ上に配置 */
     .right-card-header {
         height: 38px !important;
         min-height: 38px !important;
+        max-height: 38px !important;
         margin-bottom: 8px !important;
         display: flex !important;
         align-items: center !important;
         font-size: 0.95rem !important;
         font-weight: 700 !important;
         color: #FFFFFF !important;
-        padding: 0 4px !important;
-        border-bottom: none !important;
+        padding: 0 2px !important;
+        box-sizing: border-box !important;
     }
 
-    [data-testid="stExpander"] details {
-        background-color: #141A29 !important;
+    /* 🌟 リッチKPIカード（高さ165px完全固定・上下のラインを左右一致） */
+    .kpi-rich-card {
+        background: #141A29 !important;
         border: 1px solid #1E273D !important;
-        border-radius: 8px !important;
+        border-radius: 14px !important;
+        padding: 1.1rem 1.25rem !important;
+        margin-bottom: 0.8rem !important;
+        height: 165px !important;
+        min-height: 165px !important;
+        max-height: 165px !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
     }
-    [data-testid="stExpander"] summary {
-        background-color: #1E2238 !important;
-        padding: 12px 16px !important;
-        border-radius: 8px !important;
+    .kpi-rich-title {
+        font-size: 0.88rem;
+        color: #E2E8F0;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
-    [data-testid="stExpander"] summary p {
-        color: #F3F4F6 !important;
-        font-weight: 600 !important;
-        font-size: 1rem !important;
+    .kpi-main-metrics {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 0.6rem;
+        border-bottom: 1px solid #1E273D;
+        padding-bottom: 0.5rem;
+        flex-wrap: wrap;
+        gap: 8px;
     }
-    [data-testid="stExpander"] div[data-testid="stExpanderDetails"] {
-        background-color: #0B0F19 !important;
-        padding: 12px 8px !important;
+    .kpi-big-val { font-size: 1.95rem; font-weight: 800; color: #FFFFFF; letter-spacing: -0.5px; }
+    .kpi-sub-rate { font-size: 1rem; color: #CBD5E1; font-weight: 700; }
+    .kpi-money-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.88rem;
+        color: #CBD5E1;
+        flex-wrap: wrap;
+        gap: 4px;
     }
+    .kpi-profit-pos { color: #10B981; font-weight: 700; }
+    .kpi-profit-neg { color: #EF4444; font-weight: 700; }
 
     .sidebar-user {
         position: fixed !important;
@@ -229,54 +267,6 @@ st.markdown("""
         border-radius: 12px !important;
         padding: 1.4rem !important;
     }
-
-    /* 🌟 リッチKPIカード（高さ165px完全固定・上下配置・元の枠質感を完全維持） */
-    .kpi-rich-card {
-        background: #141A29;
-        border: 1px solid #1E273D;
-        border-radius: 14px;
-        padding: 1.1rem 1.25rem;
-        margin-bottom: 0.8rem;
-        height: 165px !important;
-        min-height: 165px !important;
-        max-height: 165px !important;
-        box-sizing: border-box !important;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-    }
-    .kpi-rich-title {
-        font-size: 0.88rem;
-        color: #E2E8F0;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .kpi-main-metrics {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        margin-bottom: 0.6rem;
-        border-bottom: 1px solid #1E273D;
-        padding-bottom: 0.5rem;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    .kpi-big-val { font-size: 1.95rem; font-weight: 800; color: #FFFFFF; letter-spacing: -0.5px; }
-    .kpi-sub-rate { font-size: 1rem; color: #CBD5E1; font-weight: 700; }
-    .kpi-money-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 0.88rem;
-        color: #CBD5E1;
-        flex-wrap: wrap;
-        gap: 4px;
-    }
-    .kpi-profit-pos { color: #10B981; font-weight: 700; }
-    .kpi-profit-neg { color: #EF4444; font-weight: 700; }
 
     .race-card {
         background: #141A29;
@@ -561,7 +551,7 @@ if menu == "📊 ダッシュボード":
     today_investment = today_target_count * 300
 
     # ==========================================
-    # 🌟 メインKPIカード（左右完全水平整列 ＆ 枠のすぐ上見出し）
+    # 🌟 メインKPIカード（左右の上端・下端が完全に水平一致）
     # ==========================================
     c1, c2 = st.columns(2)
 
@@ -644,7 +634,7 @@ if menu == "📊 ダッシュボード":
             """, unsafe_allow_html=True)
 
     with c2:
-        # 🌟 あなたの実戦の文字を枠のすぐ上に配置（左のタブと全く同じ高さ38px）
+        # 🌟 あなたの実戦の文字を枠のすぐ上に配置（左タブと完全同一の高さ38px・下マージン8px）
         st.markdown('<div class="right-card-header">👤 あなたの実戦 通算成績 (実投票)</div>', unsafe_allow_html=True)
 
         if has_real_usr and (usr_tot_inv > 0 or usr_tot_races > 0):
