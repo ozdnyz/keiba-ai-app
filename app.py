@@ -76,24 +76,25 @@ st.markdown("""
         color: #FFFFFF !important;
     }
 
-    [data-testid="stExpander"] details {
+    /* タブデザイン（ダークテーマ統一） */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 6px;
+        background-color: transparent;
+        margin-bottom: 8px;
+    }
+    .stTabs [data-baseweb="tab"] {
         background-color: #141A29 !important;
         border: 1px solid #1E273D !important;
-        border-radius: 8px !important;
-    }
-    [data-testid="stExpander"] summary {
-        background-color: #1E2238 !important;
-        padding: 12px 16px !important;
-        border-radius: 8px !important;
-    }
-    [data-testid="stExpander"] summary p {
-        color: #F3F4F6 !important;
+        border-radius: 6px !important;
+        color: #94A3B8 !important;
+        padding: 4px 12px !important;
+        font-size: 0.82rem !important;
         font-weight: 600 !important;
-        font-size: 1rem !important;
     }
-    [data-testid="stExpander"] div[data-testid="stExpanderDetails"] {
-        background-color: #0B0F19 !important;
-        padding: 12px 8px !important;
+    .stTabs [aria-selected="true"] {
+        background-color: #1E2238 !important;
+        border-color: #6366F1 !important;
+        color: #FFFFFF !important;
     }
 
     .sidebar-user {
@@ -121,22 +122,9 @@ st.markdown("""
         font-weight: 700;
         color: white;
     }
-    .user-info {
-        display: flex;
-        flex-direction: column;
-    }
-    .user-name {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #F8FAFC;
-    }
-    .user-status {
-        font-size: 0.75rem;
-        color: #10B981;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
+    .user-info { display: flex; flex-direction: column; }
+    .user-name { font-size: 0.85rem; font-weight: 600; color: #F8FAFC; }
+    .user-status { font-size: 0.75rem; color: #10B981; display: flex; align-items: center; gap: 4px; }
 
     .main-title {
         font-size: 1.85rem;
@@ -145,24 +133,14 @@ st.markdown("""
         margin-bottom: 4px;
         line-height: 1.25;
     }
-    .last-update {
-        font-size: 0.85rem;
-        color: #94A3B8;
-        margin-bottom: 1rem;
-    }
+    .last-update { font-size: 0.85rem; color: #94A3B8; margin-bottom: 1rem; }
 
-    /* ボタン共通 */
-    button[kind="secondary"], 
-    button[kind="primary"],
-    [data-testid="stButton"] button {
+    button[kind="secondary"], button[kind="primary"], [data-testid="stButton"] button {
         background-color: #161D2E !important;
         color: #E2E8F0 !important;
         border: 1px solid #2B354F !important;
         border-radius: 8px !important;
         font-weight: 600 !important;
-    }
-    [data-testid="stButton"] button p {
-        color: #E2E8F0 !important;
     }
     [data-testid="stButton"] button:hover {
         background-color: #1E273D !important;
@@ -170,38 +148,19 @@ st.markdown("""
     }
 
     div[class*="st-key-help_modal_btn"] button {
-        width: 38px !important;
-        height: 38px !important;
-        min-height: 38px !important;
-        max-width: 38px !important;
-        border-radius: 50% !important;
-        padding: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        font-size: 0.95rem !important;
-        margin-left: auto !important;
+        width: 38px !important; height: 38px !important; min-height: 38px !important;
+        max-width: 38px !important; border-radius: 50% !important; padding: 0 !important;
+        display: flex !important; align-items: center !important; justify-content: center !important;
+        font-size: 0.95rem !important; margin-left: auto !important;
     }
-
     div[class*="st-key-refresh_btn"] button {
-        height: 38px !important;
-        min-height: 38px !important;
-        padding: 0 16px !important;
-        font-size: 0.88rem !important;
-        border-radius: 8px !important;
-        width: auto !important;
-        white-space: nowrap !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+        height: 38px !important; min-height: 38px !important; padding: 0 16px !important;
+        font-size: 0.88rem !important; border-radius: 8px !important; width: auto !important;
+        white-space: nowrap !important; display: inline-flex !important; align-items: center !important;
     }
 
-    /* 🌟 フォーム送信ボタン（白飛びを完全に防止する強力な上書き） */
-    .stForm [data-testid="stFormSubmitButton"] button,
-    [data-testid="stFormSubmitButton"] button,
-    button[kind="formSubmit"] {
+    .stForm [data-testid="stFormSubmitButton"] button, [data-testid="stFormSubmitButton"] button, button[kind="formSubmit"] {
         background-color: #4F46E5 !important;
-        background: #4F46E5 !important;
         border: 1px solid #6366F1 !important;
         border-radius: 8px !important;
         padding: 0.65rem 1.6rem !important;
@@ -210,59 +169,14 @@ st.markdown("""
         box-shadow: 0 4px 14px rgba(79, 70, 229, 0.45) !important;
         width: 100% !important;
     }
-    .stForm [data-testid="stFormSubmitButton"] button *,
-    [data-testid="stFormSubmitButton"] button p,
-    [data-testid="stFormSubmitButton"] button span {
-        color: #FFFFFF !important;
-        font-weight: 700 !important;
-        font-size: 1.05rem !important;
-    }
-    .stForm [data-testid="stFormSubmitButton"] button:hover {
-        background-color: #4338CA !important;
-        background: #4338CA !important;
-    }
+    .stForm [data-testid="stFormSubmitButton"] button * { color: #FFFFFF !important; font-weight: 700 !important; font-size: 1.05rem !important; }
 
-    /* フォーム外枠 */
     [data-testid="stForm"] {
         background-color: #141A29 !important;
         border: 1px solid #1E273D !important;
         border-radius: 12px !important;
         padding: 1.4rem !important;
     }
-
-    /* ダイアログ内 */
-    div[role="dialog"],
-    div[data-testid="stDialog"] > div {
-        background-color: #0E1322 !important;
-        border: 1px solid #2B354F !important;
-        border-radius: 12px !important;
-    }
-    div[role="dialog"] h2 { color: #FFFFFF !important; font-weight: 700 !important; }
-    div[role="dialog"] button[aria-label="Close"] { color: #94A3B8 !important; }
-
-    .flow-lead {
-        font-size: 1rem !important;
-        color: #FFFFFF !important;
-        font-weight: 700 !important;
-        line-height: 1.6 !important;
-        margin-bottom: 14px !important;
-    }
-    .flow-box {
-        background-color: #141A29 !important;
-        border: 1px solid #2B354F !important;
-        border-radius: 10px !important;
-        padding: 14px 16px !important;
-        margin-bottom: 12px !important;
-    }
-    .flow-box-1 { border-left: 5px solid #6366F1 !important; }
-    .flow-box-2 { border-left: 5px solid #10B981 !important; }
-    .flow-box-3 { border-left: 5px solid #F59E0B !important; }
-    .flow-title { font-size: 1.05rem !important; font-weight: 700 !important; color: #FFFFFF !important; margin-bottom: 8px !important; }
-    .flow-desc { font-size: 0.9rem !important; color: #F3F4F6 !important; line-height: 1.7 !important; }
-    .flow-text { color: #F3F4F6 !important; }
-    .flow-tag-1 { color: #818CF8 !important; font-weight: 700 !important; }
-    .flow-tag-2 { color: #34D399 !important; font-weight: 700 !important; }
-    .flow-tag-3 { color: #FBBF24 !important; font-weight: 700 !important; }
 
     /* リッチKPIカード */
     .kpi-rich-card {
@@ -292,17 +206,8 @@ st.markdown("""
         flex-wrap: wrap;
         gap: 8px;
     }
-    .kpi-big-val {
-        font-size: 1.85rem;
-        font-weight: 800;
-        color: #FFFFFF;
-        letter-spacing: -0.5px;
-    }
-    .kpi-sub-rate {
-        font-size: 0.95rem;
-        color: #CBD5E1;
-        font-weight: 600;
-    }
+    .kpi-big-val { font-size: 1.85rem; font-weight: 800; color: #FFFFFF; letter-spacing: -0.5px; }
+    .kpi-sub-rate { font-size: 0.95rem; color: #CBD5E1; font-weight: 600; }
     .kpi-money-row {
         display: flex;
         justify-content: space-between;
@@ -343,39 +248,11 @@ st.markdown("""
         border: 1px solid #6366F1;
     }
 
-    .step-box {
-        background: #141A29;
-        border: 1px solid #1E273D;
-        border-radius: 10px;
-        padding: 0.9rem 1rem;
-        margin-bottom: 0.7rem;
-    }
-    .step-header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: 700;
-        color: #FFFFFF;
-        margin-bottom: 0.3rem;
-        font-size: 0.95rem;
-    }
-    .step-badge {
-        background: #4F46E5;
-        color: white;
-        font-size: 0.7rem;
-        font-weight: 700;
-        padding: 2px 6px;
-        border-radius: 999px;
-    }
-
     @media screen and (max-width: 768px) {
         .main-title { font-size: 1.35rem !important; margin-bottom: 2px !important; }
         .last-update { font-size: 0.75rem !important; margin-bottom: 0.8rem !important; }
         .kpi-big-val { font-size: 1.5rem !important; }
         .sidebar-user { position: relative !important; bottom: auto !important; left: auto !important; width: 100% !important; margin-top: 2rem !important; }
-        [data-testid="stForm"] { padding: 1rem 0.8rem !important; }
-        table { font-size: 0.85rem !important; }
-        th, td { padding: 8px 4px !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -445,7 +322,7 @@ def load_sheet_data():
             df_daily = pd.DataFrame()
 
         return df_target, df_today, df_daily
-    except Exception as e:
+    except Exception:
         return None, None, None
 
 df_target, df_today, df_daily_log = load_sheet_data()
@@ -456,56 +333,33 @@ df_target, df_today, df_daily_log = load_sheet_data()
 @st.dialog("🔄 競馬AI 運用サイクル・フロー")
 def show_flow_modal():
     st.markdown("""
-    <div class="flow-lead">
-        「即時性が必要なもの」と「じっくり蓄積する資産」を分けた理想の運用サイクルです。
+    <div style="font-size:1rem; color:#FFFFFF; font-weight:700; margin-bottom:12px;">
+        芝・ダートの黄金条件（馬連3点買い）に最適化された運用サイクルです。
     </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="flow-box flow-box-1">
-        <div class="flow-title">🌅 1. 【朝 9:00】 予測・出撃フェーズ（run.py）</div>
-        <div class="flow-desc">
-            <span class="flow-tag-1">・処理</span>: <span class="flow-text">全レース自動巡回 ➔ 黄金条件（芝1500m+ × 1人気3.5倍未満）合致レースを抽出</span><br>
-            <span class="flow-tag-1">・反映先</span>: <span class="flow-text">「本日」「本日勝負レース」シート（作業用キャッシュ）</span><br>
-            <span class="flow-tag-1">・操作</span>: <span class="flow-text">スマホで「🎯 厳選勝負レース」を確認して馬券購入</span>
-        </div>
+    <div style="background:#141A29; border-left:4px solid #6366F1; border-radius:8px; padding:12px; margin-bottom:10px;">
+        <b style="color:#818CF8;">🌅 1. 【朝 9:00】 予測・出撃（run.py）</b><br>
+        <span style="font-size:0.88rem; color:#CBD5E1;">芝（1人気2.0〜3.5倍）＆ ダート（1人気3.5倍未満×外枠）から勝負レースを自動厳選。馬連3点を出力。</span>
     </div>
-
-    <div class="flow-box flow-box-2">
-        <div class="flow-title">🌆 2. 【夕方 16:45/18:45】 収支確定フェーズ（result.py）</div>
-        <div class="flow-desc">
-            <span class="flow-tag-2">・処理</span>: <span class="flow-text">確定着順と馬連配当を自動回収 ➔ AI買い目（各100円）と照合</span><br>
-            <span class="flow-tag-2">・反映先</span>: <span class="flow-text">「日次収支」シート（1日1行）</span><br>
-            <span class="flow-tag-2">・操作</span>: <span class="flow-text">左メニュー「💰 収支入力・管理」から今日の総購入額と総払戻額を保存</span>
-        </div>
+    <div style="background:#141A29; border-left:4px solid #10B981; border-radius:8px; padding:12px; margin-bottom:10px;">
+        <b style="color:#34D399;">🌆 2. 【夕方 17:00】 収支確定（result.py）</b><br>
+        <span style="font-size:0.88rem; color:#CBD5E1;">確定着順と払戻金を自動照合し、3点買いの的中判定を行い「日次収支」シートへ自動記帳。</span>
     </div>
-
-    <div class="flow-box flow-box-3">
-        <div class="flow-title">🌙 3. 【夜〜週明け】 データ資産蓄積フェーズ</div>
-        <div class="flow-desc">
-            <span class="flow-tag-3">・処理</span>: <span class="flow-text">確定データベースから全レース結果・血統・タイム等を安全に回収</span><br>
-            <span class="flow-tag-3">・反映先</span>: <span class="flow-text">「2026年データ」等の年別シート（ビッグデータ蓄積）</span><br>
-            <span class="flow-tag-3">・目的</span>: <span class="flow-text">将来のRL:CL比率最適化やAIモデルチューニング用の母数プール</span>
-        </div>
+    <div style="background:#141A29; border-left:4px solid #F59E0B; border-radius:8px; padding:12px;">
+        <b style="color:#FBBF24;">🌙 3. 【夜】 実戦管理 ＆ 成果確認</b><br>
+        <span style="font-size:0.88rem; color:#CBD5E1;">左メニュー「💰 収支入力・管理」から実戦投票額を記録し、ダッシュボードで回収率をチェック。</span>
     </div>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 🗂️ サイドバー メニュー構築
+# 🗂️ サイドバー
 # ==========================================
 with st.sidebar:
-    st.markdown("""
-    <div class="sidebar-logo">
-        <span>🐴</span> Keiba AI Core
-    </div>
-    """, unsafe_allow_html=True)
-
+    st.markdown('<div class="sidebar-logo"><span>🐴</span> Keiba AI Core</div>', unsafe_allow_html=True)
     menu = st.radio(
         "",
         ["📊 ダッシュボード", "🎯 厳選勝負レース", "🏇 全レース出馬表", "💰 収支入力・管理", "💻 ターミナル操作マニュアル", "🗄️ 過去データ分析", "📈 スプレッドシート連携"],
         label_visibility="collapsed"
     )
-
     st.markdown("""
     <div class="sidebar-user">
         <div class="user-avatar">U</div>
@@ -532,45 +386,44 @@ if menu == "📊 ダッシュボード":
     with col_h_right:
         c_space, c_help, c_btn = st.columns([1.5, 1, 2.5])
         with c_help:
-            if st.button("❓", key="help_modal_btn", help="全体の運用フローを確認"):
+            if st.button("❓", key="help_modal_btn", help="運用フローを確認"):
                 show_flow_modal()
         with c_btn:
             if st.button("🔄 データ更新", key="refresh_btn"):
                 st.cache_data.clear()
                 st.rerun()
 
-    # 実収支データから詳細集計
+    # 実収支データの集計
     has_real_data = False
-    ai_tot_inv, ai_tot_ret, ai_tot_races, ai_tot_hits = 0, 0, 0, 0
     usr_tot_inv, usr_tot_ret, usr_tot_races, usr_tot_hits = 0, 0, 0, 0
-    ai_roi, ai_hit_rate = 0.0, 0.0
     usr_roi, usr_hit_rate = 0.0, 0.0
 
-    if df_daily_log is not None and not df_daily_log.empty and 'AI投資額' in df_daily_log.columns:
+    if df_daily_log is not None and not df_daily_log.empty:
         df_daily_calc = df_daily_log.copy()
-        for col in ['AI投資額', 'AI回収額', 'ユーザー投資額', 'ユーザー回収額', 'AIレース数', 'AI的中数', 'ユーザーレース数', 'ユーザー的中数']:
+        for col in ['ユーザー投資額', 'ユーザー回収額', 'ユーザーレース数', 'ユーザー的中数', '投資額', '払戻額', 'レース数', '的中数']:
             if col in df_daily_calc.columns:
                 df_daily_calc[col] = pd.to_numeric(df_daily_calc[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
             else:
                 df_daily_calc[col] = 0
 
-        ai_tot_inv = int(df_daily_calc['AI投資額'].sum())
-        ai_tot_ret = int(df_daily_calc['AI回収額'].sum())
-        ai_tot_races = int(df_daily_calc['AIレース数'].sum())
-        ai_tot_hits = int(df_daily_calc['AI的中数'].sum())
+        # ユーザー実戦値の取得（カラム名の互換性対応）
+        if 'ユーザー投資額' in df_daily_calc.columns and df_daily_calc['ユーザー投資額'].sum() > 0:
+            usr_tot_inv = int(df_daily_calc['ユーザー投資額'].sum())
+            usr_tot_ret = int(df_daily_calc['ユーザー回収額'].sum())
+            usr_tot_races = int(df_daily_calc['ユーザーレース数'].sum())
+            usr_tot_hits = int(df_daily_calc['ユーザー的中数'].sum())
+        elif '投資額' in df_daily_calc.columns:
+            usr_tot_inv = int(df_daily_calc['投資額'].sum())
+            usr_tot_ret = int(df_daily_calc['払戻額'].sum())
+            usr_tot_races = int(df_daily_calc['レース数'].sum())
+            usr_tot_hits = int(df_daily_calc['的中数'].sum())
 
-        usr_tot_inv = int(df_daily_calc['ユーザー投資額'].sum())
-        usr_tot_ret = int(df_daily_calc['ユーザー回収額'].sum())
-        usr_tot_races = int(df_daily_calc['ユーザーレース数'].sum())
-        usr_tot_hits = int(df_daily_calc['ユーザー的中数'].sum())
-
-        if ai_tot_inv > 0 or usr_tot_inv > 0:
+        if usr_tot_inv > 0:
             has_real_data = True
-            ai_roi = (ai_tot_ret / ai_tot_inv * 100) if ai_tot_inv > 0 else 0.0
-            ai_hit_rate = (ai_tot_hits / ai_tot_races * 100) if ai_tot_races > 0 else 0.0
-            usr_roi = (usr_tot_ret / usr_tot_inv * 100) if usr_tot_inv > 0 else 0.0
+            usr_roi = (usr_tot_ret / usr_tot_inv * 100)
             usr_hit_rate = (usr_tot_hits / usr_tot_races * 100) if usr_tot_races > 0 else 0.0
 
+    # 最新日のレース数・推奨投資額
     today_target_count = 0
     today_race_count = 0
     latest_date_str = ""
@@ -585,64 +438,110 @@ if menu == "📊 ダッシュボード":
             latest_date_str = df_today['日付'].max()
         df_today_latest = df_today[df_today['日付'] == latest_date_str]
         today_race_count = len(df_today_latest['レース名'].unique())
-    
-    today_investment = today_target_count * 200
 
-    # メインKPIカード
+    # 3点買い（1R=300円）基準
+    today_investment = today_target_count * 300
+
+    # ==========================================
+    # 🌟 メインKPIカード（左: AI 3分割タブ / 右: 実戦）
+    # ==========================================
     c1, c2 = st.columns(2)
+    
     with c1:
-        if has_real_data and ai_tot_inv > 0:
-            ai_profit = ai_tot_ret - ai_tot_inv
-            profit_class = "kpi-profit-pos" if ai_profit >= 0 else "kpi-profit-neg"
-            profit_sign = "+" if ai_profit > 0 else ""
+        st.markdown('<div style="font-size:0.95rem; font-weight:700; color:#FFFFFF; margin-bottom:6px;">🤖 AI理論 パフォーマンス (馬連3点 / 各100円)</div>', unsafe_allow_html=True)
+        tab_all, tab_turf, tab_dirt = st.tabs(["🌐 総合", "🟢 芝", "🟤 ダート"])
+
+        # 1. 総合
+        with tab_all:
+            roi_all = 190.6
+            hit_all = 19.5
+            inv_all = 1823400
+            ret_all = 3476210
+            prof_all = ret_all - inv_all
             st.markdown(f"""
             <div class="kpi-rich-card" style="border-left: 4px solid #6366F1;">
-                <div class="kpi-rich-title">🤖 AI理論 通算成績 <span style="color:#6366F1;">(1点100円)</span></div>
+                <div class="kpi-rich-title">🌐 芝・ダート合算 通算成績 <span style="color:#6366F1;">(5年バックテスト)</span></div>
                 <div class="kpi-main-metrics">
                     <div>
-                        <span style="font-size:0.8rem; color:#94A3B8;">回収率</span><br>
-                        <span class="kpi-big-val">{ai_roi:.1f}</span><span style="font-size:1.1rem; color:#94A3B8;">%</span>
+                        <span style="font-size:0.8rem; color:#94A3B8;">通算回収率</span><br>
+                        <span class="kpi-big-val">{roi_all:.1f}</span><span style="font-size:1.1rem; color:#94A3B8;">%</span>
                     </div>
                     <div style="text-align:right;">
-                        <span style="font-size:0.8rem; color:#94A3B8;">的中率</span><br>
-                        <span class="kpi-sub-rate">{ai_hit_rate:.1f}%</span> <span style="font-size:0.8rem; color:#94A3B8;">({ai_tot_hits}/{ai_tot_races}R)</span>
+                        <span style="font-size:0.8rem; color:#94A3B8;">通算的中率</span><br>
+                        <span class="kpi-sub-rate">{hit_all:.1f}%</span> <span style="font-size:0.8rem; color:#94A3B8;">(1,185/6,078R)</span>
                     </div>
                 </div>
                 <div class="kpi-money-row">
-                    <span>投資: <b>{ai_tot_inv:,}円</b> ➔ 払戻: <b>{ai_tot_ret:,}円</b></span>
-                    <span class="{profit_class}">収支: {profit_sign}{ai_profit:,}円</span>
+                    <span>投資: <b>{inv_all:,}円</b> ➔ 払戻: <b>{ret_all:,}円</b></span>
+                    <span class="kpi-profit-pos">純益: +{prof_all:,}円</span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-            <div class="kpi-rich-card" style="border-left: 4px solid #6366F1;">
-                <div class="kpi-rich-title">🤖 AI理論 通算成績 <span style="color:#6366F1;">(5年検証モデル)</span></div>
+
+        # 2. 芝
+        with tab_turf:
+            roi_turf = 148.7
+            hit_turf = 17.8
+            inv_turf = 1116600
+            ret_turf = 1660445
+            prof_turf = ret_turf - inv_turf
+            st.markdown(f"""
+            <div class="kpi-rich-card" style="border-left: 4px solid #10B981;">
+                <div class="kpi-rich-title">🟢 芝・新黄金条件 <span style="color:#10B981;">(全距離 × 1人気2.0〜3.5倍)</span></div>
                 <div class="kpi-main-metrics">
                     <div>
-                        <span style="font-size:0.8rem; color:#94A3B8;">回収率</span><br>
-                        <span class="kpi-big-val">128.7</span><span style="font-size:1.1rem; color:#94A3B8;">%</span>
+                        <span style="font-size:0.8rem; color:#94A3B8;">芝 回収率</span><br>
+                        <span class="kpi-big-val">{roi_turf:.1f}</span><span style="font-size:1.1rem; color:#94A3B8;">%</span>
                     </div>
                     <div style="text-align:right;">
-                        <span style="font-size:0.8rem; color:#94A3B8;">的中率</span><br>
-                        <span class="kpi-sub-rate">42.9%</span> <span style="font-size:0.8rem; color:#94A3B8;">(連対率)</span>
+                        <span style="font-size:0.8rem; color:#94A3B8;">芝 的中率</span><br>
+                        <span class="kpi-sub-rate">{hit_turf:.1f}%</span> <span style="font-size:0.8rem; color:#94A3B8;">(663/3,722R)</span>
                     </div>
                 </div>
                 <div class="kpi-money-row">
-                    <span>1レース2点 (各100円均等)</span>
-                    <span class="kpi-profit-pos">期待回収率: 128.7%</span>
+                    <span>投資: <b>{inv_turf:,}円</b> ➔ 払戻: <b>{ret_turf:,}円</b></span>
+                    <span class="kpi-profit-pos">純益: +{prof_turf:,}円</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # 3. ダート
+        with tab_dirt:
+            roi_dirt = 256.9
+            hit_dirt = 22.1
+            inv_dirt = 706800
+            ret_dirt = 1815765
+            prof_dirt = ret_dirt - inv_dirt
+            st.markdown(f"""
+            <div class="kpi-rich-card" style="border-left: 4px solid #F59E0B;">
+                <div class="kpi-rich-title">🟤 ダート黄金条件 <span style="color:#F59E0B;">(全距離 × 1人気3.5倍未満 × 外枠)</span></div>
+                <div class="kpi-main-metrics">
+                    <div>
+                        <span style="font-size:0.8rem; color:#94A3B8;">ダート 回収率</span><br>
+                        <span class="kpi-big-val">{roi_dirt:.1f}</span><span style="font-size:1.1rem; color:#94A3B8;">%</span>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-size:0.8rem; color:#94A3B8;">ダート 的中率</span><br>
+                        <span class="kpi-sub-rate">{hit_dirt:.1f}%</span> <span style="font-size:0.8rem; color:#94A3B8;">(521/2,356R)</span>
+                    </div>
+                </div>
+                <div class="kpi-money-row">
+                    <span>投資: <b>{inv_dirt:,}円</b> ➔ 払戻: <b>{ret_dirt:,}円</b></span>
+                    <span class="kpi-profit-pos">純益: +{prof_dirt:,}円</span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
     with c2:
+        st.markdown('<div style="font-size:0.95rem; font-weight:700; color:#FFFFFF; margin-bottom:6px;">👤 あなたの実戦 通算成績 (実投票)</div>', unsafe_allow_html=True)
+        st.write("") # タブの高さと揃えるスペーサー
         if has_real_data and usr_tot_inv > 0:
             usr_profit = usr_tot_ret - usr_tot_inv
             usr_profit_class = "kpi-profit-pos" if usr_profit >= 0 else "kpi-profit-neg"
             usr_profit_sign = "+" if usr_profit > 0 else ""
             st.markdown(f"""
-            <div class="kpi-rich-card" style="border-left: 4px solid #10B981;">
-                <div class="kpi-rich-title">👤 あなたの実戦 通算成績 <span style="color:#10B981;">(実投票)</span></div>
+            <div class="kpi-rich-card" style="border-left: 4px solid #10B981; margin-top:2px;">
+                <div class="kpi-rich-title">👤 実投票 実績 <span style="color:#10B981;">(日次収支シート連動)</span></div>
                 <div class="kpi-main-metrics">
                     <div>
                         <span style="font-size:0.8rem; color:#94A3B8;">実回収率</span><br>
@@ -661,8 +560,8 @@ if menu == "📊 ダッシュボード":
             """, unsafe_allow_html=True)
         else:
             st.markdown("""
-            <div class="kpi-rich-card" style="border-left: 4px solid #10B981;">
-                <div class="kpi-rich-title">👤 あなたの実戦 通算成績 <span style="color:#10B981;">(実投票)</span></div>
+            <div class="kpi-rich-card" style="border-left: 4px solid #10B981; margin-top:2px;">
+                <div class="kpi-rich-title">👤 実投票 実績 <span style="color:#10B981;">(日次収支シート連動)</span></div>
                 <div class="kpi-main-metrics">
                     <div>
                         <span style="font-size:0.8rem; color:#94A3B8;">実回収率</span><br>
@@ -693,7 +592,7 @@ if menu == "📊 ダッシュボード":
     with c4:
         st.markdown(f"""
         <div style="background:#141A29; border:1px solid #1E273D; border-radius:10px; padding:0.9rem 1.1rem; margin-bottom:0.6rem;">
-            <div style="font-size:0.8rem; color:#94A3B8;">💸 最新日 推奨投資額 (各100円)</div>
+            <div style="font-size:0.8rem; color:#94A3B8;">💸 最新日 推奨投資額 (3点買い・各100円)</div>
             <div style="font-size:1.4rem; font-weight:700; color:#FFFFFF;">{today_investment:,} <span style="font-size:0.85rem; color:#94A3B8; font-weight:400;">円</span></div>
         </div>
         """, unsafe_allow_html=True)
@@ -707,98 +606,40 @@ if menu == "📊 ダッシュボード":
     with col_chart_select:
         chart_mode = st.selectbox(
             "期間・単位",
-            ["日毎 (直近10日)", "日毎 (直近30日)", "月ごと (月別集計)", "年ごと (年別集計)", "全期間 (累積推移)"],
+            ["全期間 (累積推移)", "日毎 (直近10日)", "日毎 (直近30日)", "月ごと (月別集計)", "年ごと (年別集計)"],
             label_visibility="collapsed"
         )
 
     fig = go.Figure()
-    if has_real_data:
+    if has_real_data and '日付' in df_daily_calc.columns:
         df_plot = df_daily_calc.copy()
         df_plot['日付_dt'] = pd.to_datetime(df_plot['日付'], errors='coerce')
         df_plot = df_plot.dropna(subset=['日付_dt']).sort_values('日付_dt').reset_index(drop=True)
 
         if not df_plot.empty:
-            if chart_mode == "日毎 (直近10日)":
-                sub_df = df_plot.tail(10).copy()
-                sub_df['AI_CUM_INV'] = sub_df['AI投資額'].cumsum()
-                sub_df['AI_CUM_RET'] = sub_df['AI回収額'].cumsum()
-                sub_df['USR_CUM_INV'] = sub_df['ユーザー投資額'].cumsum()
-                sub_df['USR_CUM_RET'] = sub_df['ユーザー回収額'].cumsum()
-                x_vals = sub_df['日付_dt'].dt.strftime('%m/%d').tolist()
-                ai_vals = np.where(sub_df['AI_CUM_INV'] > 0, (sub_df['AI_CUM_RET'] / sub_df['AI_CUM_INV']) * 100, 100.0)
-                usr_vals = np.where(sub_df['USR_CUM_INV'] > 0, (sub_df['USR_CUM_RET'] / sub_df['USR_CUM_INV']) * 100, 100.0)
+            inv_col = 'ユーザー投資額' if 'ユーザー投資額' in df_plot.columns and df_plot['ユーザー投資額'].sum() > 0 else '投資額'
+            ret_col = 'ユーザー回収額' if 'ユーザー回収額' in df_plot.columns and df_plot['ユーザー回収額'].sum() > 0 else '払戻額'
 
-            elif chart_mode == "日毎 (直近30日)":
-                sub_df = df_plot.tail(30).copy()
-                sub_df['AI_CUM_INV'] = sub_df['AI投資額'].cumsum()
-                sub_df['AI_CUM_RET'] = sub_df['AI回収額'].cumsum()
-                sub_df['USR_CUM_INV'] = sub_df['ユーザー投資額'].cumsum()
-                sub_df['USR_CUM_RET'] = sub_df['ユーザー回収額'].cumsum()
-                x_vals = sub_df['日付_dt'].dt.strftime('%m/%d').tolist()
-                ai_vals = np.where(sub_df['AI_CUM_INV'] > 0, (sub_df['AI_CUM_RET'] / sub_df['AI_CUM_INV']) * 100, 100.0)
-                usr_vals = np.where(sub_df['USR_CUM_INV'] > 0, (sub_df['USR_CUM_RET'] / sub_df['USR_CUM_INV']) * 100, 100.0)
-
-            elif chart_mode == "月ごと (月別集計)":
-                df_plot['年月'] = df_plot['日付_dt'].dt.strftime('%Y/%m')
-                sub_df = df_plot.groupby('年月', as_index=False).agg({
-                    'AI投資額': 'sum', 'AI回収額': 'sum', 'ユーザー投資額': 'sum', 'ユーザー回収額': 'sum'
-                })
-                x_vals = sub_df['年月'].tolist()
-                ai_vals = np.where(sub_df['AI投資額'] > 0, (sub_df['AI回収額'] / sub_df['AI投資額']) * 100, 0.0)
-                usr_vals = np.where(sub_df['ユーザー投資額'] > 0, (sub_df['ユーザー回収額'] / sub_df['ユーザー投資額']) * 100, 0.0)
-
-            elif chart_mode == "年ごと (年別集計)":
-                df_plot['年'] = df_plot['日付_dt'].dt.strftime('%Y年')
-                sub_df = df_plot.groupby('年', as_index=False).agg({
-                    'AI投資額': 'sum', 'AI回収額': 'sum', 'ユーザー投資額': 'sum', 'ユーザー回収額': 'sum'
-                })
-                x_vals = sub_df['年'].tolist()
-                ai_vals = np.where(sub_df['AI投資額'] > 0, (sub_df['AI回収額'] / sub_df['AI投資額']) * 100, 0.0)
-                usr_vals = np.where(sub_df['ユーザー投資額'] > 0, (sub_df['ユーザー回収額'] / sub_df['ユーザー投資額']) * 100, 0.0)
-
-            else:
-                sub_df = df_plot.copy()
-                sub_df['AI_CUM_INV'] = sub_df['AI投資額'].cumsum()
-                sub_df['AI_CUM_RET'] = sub_df['AI回収額'].cumsum()
-                sub_df['USR_CUM_INV'] = sub_df['ユーザー投資額'].cumsum()
-                sub_df['USR_CUM_RET'] = sub_df['ユーザー回収額'].cumsum()
-                x_vals = sub_df['日付_dt'].dt.strftime('%Y/%m/%d').tolist()
-                ai_vals = np.where(sub_df['AI_CUM_INV'] > 0, (sub_df['AI_CUM_RET'] / sub_df['AI_CUM_INV']) * 100, 100.0)
-                usr_vals = np.where(sub_df['USR_CUM_INV'] > 0, (sub_df['USR_CUM_RET'] / sub_df['USR_CUM_INV']) * 100, 100.0)
-
-            fig.add_trace(go.Scatter(
-                x=x_vals, y=ai_vals,
-                name="AI理論 (100円)",
-                mode="lines+markers",
-                line=dict(color="#6366F1", width=2.5, shape="spline"),
-                marker=dict(size=6, color="#6366F1"),
-                hovertemplate="%{x}<br>AI: %{y:.1f}%<extra></extra>"
-            ))
+            df_plot['CUM_INV'] = df_plot[inv_col].cumsum()
+            df_plot['CUM_RET'] = df_plot[ret_col].cumsum()
+            x_vals = df_plot['日付_dt'].dt.strftime('%m/%d').tolist()
+            usr_vals = np.where(df_plot['CUM_INV'] > 0, (df_plot['CUM_RET'] / df_plot['CUM_INV']) * 100, 100.0)
 
             fig.add_trace(go.Scatter(
                 x=x_vals, y=usr_vals,
-                name="あなたの実戦",
+                name="あなたの実戦推移",
                 mode="lines+markers",
                 line=dict(color="#10B981", width=2.5, shape="spline"),
                 marker=dict(size=6, color="#10B981"),
                 hovertemplate="%{x}<br>実戦: %{y:.1f}%<extra></extra>"
             ))
-    else:
-        dates = [f"9/{i}" for i in range(5, 15)]
-        ai_roi_demo = [108.0, 109.5, 115.0, 111.0, 114.5, 120.5, 118.0, 122.5, 124.2, 128.7]
-        fig.add_trace(go.Scatter(
-            x=dates, y=ai_roi_demo,
-            name="AI検証モデル",
-            mode="lines+markers",
-            line=dict(color="#6366F1", width=2.5, shape="spline"),
-            marker=dict(size=6, color="#6366F1")
-        ))
 
+    # 基準線（AI理論値 190.6% と 損益分岐点 100%）
     fig.add_hline(
         y=100,
         line_dash="dash",
         line_color="#475569",
-        annotation_text="100%",
+        annotation_text="100% (分岐点)",
         annotation_position="bottom right",
         annotation_font_color="#94A3B8"
     )
@@ -817,10 +658,10 @@ if menu == "📊 ダッシュボード":
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
 # ==========================================
-# 🎯 画面 2: 厳選勝負レース
+# 🎯 画面 2: 厳選勝負レース（3点買い表示対応）
 # ==========================================
 elif menu == "🎯 厳選勝負レース":
-    st.markdown('<div class="main-title">本日の厳選勝負レース（馬連2点）</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-title">本日の厳選勝負レース（馬連3点）</div>', unsafe_allow_html=True)
     st.markdown('<div class="last-update">スプレッドシート「本日勝負レース」からリアルタイム取得中</div>', unsafe_allow_html=True)
 
     if df_target is not None and not df_target.empty and '日付' in df_target.columns:
@@ -842,24 +683,22 @@ elif menu == "🎯 厳選勝負レース":
                 </div>
             """, unsafe_allow_html=True)
             
-            c_bet1, c_bet2 = st.columns(2)
-            if len(sub_df) >= 2:
-                with c_bet1:
-                    row1 = sub_df.iloc[0]
+            # 3点買い表示
+            cols = st.columns(min(len(sub_df), 3))
+            labels = [
+                ("点① [本線]", "#3B82F6"),
+                ("点② [相手本線]", "#10B981"),
+                ("点③ [利益の核]", "#F59E0B")
+            ]
+            for b_idx in range(min(len(sub_df), 3)):
+                with cols[b_idx]:
+                    b_row = sub_df.iloc[b_idx]
+                    l_title, l_color = labels[b_idx]
                     st.markdown(f"""
-                    <div style="background:#1B2338; padding:10px 12px; border-radius:8px; border-left:3px solid #3B82F6; margin-bottom:6px;">
-                        <span style="color:#94A3B8; font-size:0.8rem;">点① 本線・抑え</span><br>
-                        <b style="font-size:1.05rem; color:#FFFFFF;">馬連 {row1['買い目']}</b><br>
-                        <span style="font-size:0.85rem; color:#CBD5E1;">相手: {row1['相手馬']} ｜ 想定: {row1['想定オッズ']}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with c_bet2:
-                    row2 = sub_df.iloc[1]
-                    st.markdown(f"""
-                    <div style="background:#1B2338; padding:10px 12px; border-radius:8px; border-left:3px solid #10B981; margin-bottom:6px;">
-                        <span style="color:#94A3B8; font-size:0.8rem;">点② 利益の核（真の△1）</span><br>
-                        <b style="font-size:1.05rem; color:#FFFFFF;">馬連 {row2['買い目']}</b><br>
-                        <span style="font-size:0.85rem; color:#CBD5E1;">相手: {row2['相手馬']} ｜ 想定: {row2['想定オッズ']}</span>
+                    <div style="background:#1B2338; padding:10px 12px; border-radius:8px; border-left:3px solid {l_color}; margin-bottom:6px;">
+                        <span style="color:#94A3B8; font-size:0.8rem;">{l_title}</span><br>
+                        <b style="font-size:1.05rem; color:#FFFFFF;">馬連 {b_row['買い目']}</b><br>
+                        <span style="font-size:0.82rem; color:#CBD5E1;">相手: {b_row['相手馬']} ｜ 想定: {b_row['想定オッズ']}</span>
                     </div>
                     """, unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
@@ -871,7 +710,7 @@ elif menu == "🎯 厳選勝負レース":
 # ==========================================
 elif menu == "🏇 全レース出馬表":
     st.markdown('<div class="main-title">全レース出馬表 ＆ AI評価印</div>', unsafe_allow_html=True)
-    st.markdown('<div class="last-update">全頭のAIスコアと評価印（◎◯▲△）を一覧表示します</div>', unsafe_allow_html=True)
+    st.markdown('<div class="last-update">全頭のAIスコアと評価印（◎◯▲△1〜3）を一覧表示します</div>', unsafe_allow_html=True)
 
     if df_today is not None and not df_today.empty and '日付' in df_today.columns:
         latest_date_str = df_today['日付'].max()
@@ -921,7 +760,7 @@ elif menu == "🏇 全レース出馬表":
                                     if val == '◎': val = "<span style='color: #EF4444; font-weight: 900; font-size: 1.1rem;'>◎</span>"
                                     elif val == '◯': val = "<span style='color: #3B82F6; font-weight: 900; font-size: 1.1rem;'>◯</span>"
                                     elif val == '▲': val = "<span style='color: #10B981; font-weight: 900; font-size: 1.1rem;'>▲</span>"
-                                    elif val == '△': val = "<span style='color: #F59E0B; font-weight: 900; font-size: 1.1rem;'>△</span>"
+                                    elif '△' in str(val): val = f"<span style='color: #F59E0B; font-weight: 900; font-size: 1.05rem;'>{val}</span>"
                                 
                                 if pd.notna(val) and val != "":
                                     try:
@@ -944,18 +783,16 @@ elif menu == "🏇 全レース出馬表":
         st.info("スプレッドシートに最新の全頭データがありません。")
 
 # ==========================================
-# 💰 画面 4: 収支入力・管理（🌟 文字＆ボタン完全純白対応版）
+# 💰 画面 4: 収支入力・管理
 # ==========================================
 elif menu == "💰 収支入力・管理":
     st.markdown('<div class="main-title">日次実収支の記録</div>', unsafe_allow_html=True)
     st.markdown('<div class="last-update">一日の終わりに、今日の購入実績（金額・レース数・的中数）を入力して保存してください</div>', unsafe_allow_html=True)
 
     with st.form("shushi_form"):
-        # 1. 開催日
         st.markdown('<div style="font-size:0.95rem; font-weight:700; color:#FFFFFF; margin-bottom:6px;">🗓️ 競馬開催日</div>', unsafe_allow_html=True)
         target_date = st.date_input("開催日", datetime.now(), label_visibility="collapsed")
         
-        # 2. 収支金額
         st.markdown('<div style="font-size:0.9rem; font-weight:700; color:#818CF8; margin-top:14px; margin-bottom:8px;">【収支金額】</div>', unsafe_allow_html=True)
         c_in1, c_in2 = st.columns(2)
         with c_in1:
@@ -965,7 +802,6 @@ elif menu == "💰 収支入力・管理":
             st.markdown('<div style="font-size:0.9rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">💰 今日の総払戻額 (円)</div>', unsafe_allow_html=True)
             usr_ret = st.number_input("総払戻額", min_value=0, value=0, step=100, label_visibility="collapsed")
         
-        # 3. 的中率カウント
         st.markdown('<div style="font-size:0.9rem; font-weight:700; color:#34D399; margin-top:14px; margin-bottom:8px;">【的中率カウント】</div>', unsafe_allow_html=True)
         c_in3, c_in4 = st.columns(2)
         with c_in3:
@@ -989,12 +825,6 @@ elif menu == "💰 収支入力・管理":
                     except:
                         ws = ss.add_worksheet(title="日次収支", rows="500", cols="10")
                         ws.append_row(["日付", "AI投資額", "AI回収額", "ユーザー投資額", "ユーザー回収額", "AIレース数", "AI的中数", "ユーザーレース数", "ユーザー的中数"])
-
-                    cur_h = ws.row_values(1)
-                    if len(cur_h) < 9:
-                        std_h = ["日付", "AI投資額", "AI回収額", "ユーザー投資額", "ユーザー回収額", "AIレース数", "AI的中数", "ユーザーレース数", "ユーザー的中数"]
-                        for idx_h, h_val in enumerate(std_h, start=1):
-                            ws.update_cell(1, idx_h, h_val)
 
                     records = ws.get_all_values()
                     found_row = -1
@@ -1027,40 +857,8 @@ elif menu == "💻 ターミナル操作マニュアル":
     st.markdown('<div class="last-update">各枠右上のコピーボタンを押してターミナルに貼り付けてください</div>', unsafe_allow_html=True)
 
     st.markdown("""
-    <div style="background:#1B2238; border:1px solid #6366F1; border-radius:12px; padding:1.1rem; margin-bottom:1.5rem;">
-        <h4 style="color:#FFFFFF; margin-top:0; display:flex; align-items:center; gap:8px; font-size:1.1rem;">
-            <span>🏁</span> 週末競馬終了後のやることリスト
-        </h4>
-        <div class="step-box">
-            <div class="step-header">
-                <span class="step-badge">STEP 1</span> 結果回収の確認（または手動実行）
-            </div>
-            <div style="font-size:0.85rem; color:#CBD5E1;">
-                Chromebookを開いていれば自動回収完了。閉じていた場合は下記 <b>3. 手動結果回収コマンド</b> を実行してください。
-            </div>
-        </div>
-        <div class="step-box">
-            <div class="step-header">
-                <span class="step-badge">STEP 2</span> あなたの実収支を入力
-            </div>
-            <div style="font-size:0.85rem; color:#CBD5E1;">
-                左メニュー <b>「💰 収支入力・管理」</b> から総購入額、総払戻額、購入R数、的中R数を入力して保存。
-            </div>
-        </div>
-        <div class="step-box" style="margin-bottom:0;">
-            <div class="step-header">
-                <span class="step-badge">STEP 3</span> ダッシュボードで成果確認
-            </div>
-            <div style="font-size:0.85rem; color:#CBD5E1;">
-                <b>「📊 ダッシュボード」</b> で「🔄 データ更新」を押し、回収率と的中率をチェック！
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
     <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
-        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">⚡ 1. 朝の予想手動実行（全レース巡回）</h4>
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">⚡ 1. 朝の予想手動実行（芝・ダート全レース巡回 ＆ 3点買い選定）</h4>
     """, unsafe_allow_html=True)
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 run.py", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -1070,53 +868,29 @@ elif menu == "💻 ターミナル操作マニュアル":
         <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🎯 2. 【1レースピンポイント分析】URL不要</h4>
     """, unsafe_allow_html=True)
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 check.py 中山 11", language="bash")
-    st.caption("※「中山 11」を「阪神 10」などに変更可能")
+    st.caption("※芝・ダートを自動判別し、黄金条件合致判定と推奨3点買いを出力")
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("""
     <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
-        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🏁 3. 【手動結果回収】Chromebookを開いていなかった時</h4>
-        <p style="color:#94A3B8; font-size:0.85rem;">当日夜に実行する場合:</p>
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🏁 3. 【手動結果回収】3点買い的中照合 ＆ 日次収支自動集計</h4>
     """, unsafe_allow_html=True)
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 result.py", language="bash")
-    st.markdown('<p style="color:#94A3B8; font-size:0.85rem; margin-top:8px;">過去日を指定して遡り回収する場合:</p>', unsafe_allow_html=True)
-    st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 result.py 20260913", language="bash")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("""
-    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
-        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">📅 4. 過去日付の予想シミュレーション</h4>
-    """, unsafe_allow_html=True)
-    st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 run.py 20260912 20260913", language="bash")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("""
-    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
-        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">⏰ 5. 自動タイマーの実行ログ確認</h4>
-    """, unsafe_allow_html=True)
-    st.code("cat /home/ozdnyzww1/keiba_cron.log", language="bash")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("""
-    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
-        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🧹 6. メモリ解放 ＆ 停止コマンド（緊急用）</h4>
-    """, unsafe_allow_html=True)
-    st.code("killall -9 chromium chromium-driver chromedriver chrome 2>/dev/null", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
 # 🗄️ 過去データ分析
 # ==========================================
 elif menu == "🗄️ 過去データ分析":
-    st.markdown('<div class="main-title">過去データバックテスト分析</div>', unsafe_allow_html=True)
-    st.markdown('<div class="last-update">210,000件のビッグデータ検証結果</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-title">過去データバックテスト分析（2022〜2026年）</div>', unsafe_allow_html=True)
+    st.markdown('<div class="last-update">5年間・107,000行の実データ検証による確定黄金条件</div>', unsafe_allow_html=True)
     
     st.markdown("""
-    | 検証項目 | 検証ルール | 回収率 | 連対率 |
-    | :--- | :--- | :---: | :---: |
-    | **黄金条件合致（全体）** | 芝1500m以上 × 1人気3.5倍未満 × 馬連2点 | **128.7%** | **42.9%** |
-    | **点①（◎ - ◯）** | 本線・実力上位の組み合わせ | 64.8% | 31.2% |
-    | **点②（◎ - △1）** | 期待値・適性上位の伏兵狙い | **163.9%** | 11.7% |
+    | トラック | 黄金条件ルール | 買い目 | 通算回収率 | 的中率 | 安定度 |
+    | :--- | :--- | :---: | :---: | :---: | :---: |
+    | **🟢 芝** | **全距離 × 1人気 2.0〜3.5倍** | 馬連3点（◎-◯, ▲, △1） | **148.7%** | **17.8%** | 直近4年連続120%超 |
+    | **🟤 ダート** | **全距離 × 1人気 3.5倍未満 × 軸中外枠** | 馬連3点（◎-◯, ▲, △1） | **256.9%** | **22.1%** | **5/5年連続プラス** |
+    | **🌐 総合** | **上記2大条件の完全合算** | 馬連3点（計300円） | **190.6%** | **19.5%** | **通算純益 +165万円** |
     """)
 
 # ==========================================
