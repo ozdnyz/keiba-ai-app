@@ -492,7 +492,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 🚀 画面 1: 📊 ダッシュボード（完全維持）
+# 🚀 画面 1: 📊 ダッシュボード（🌟 レース数集計を会場＋レース名で完全修正）
 # ==========================================
 if menu == "📊 ダッシュボード":
     col_h_left, col_h_right = st.columns([7, 3])
@@ -590,11 +590,16 @@ if menu == "📊 ダッシュボード":
         df_target_latest = df_target[df_target['日付'] == latest_date_str]
         today_target_count = len(df_target_latest[['競馬場', 'レース名']].drop_duplicates())
 
+    # 🌟【重要修正】「会場」＋「レース名」のセットでユニーク判定し、同名レースの重複合算を防止！
     if df_today is not None and not df_today.empty and '日付' in df_today.columns:
         if not latest_date_str:
             latest_date_str = df_today['日付'].max()
         df_today_latest = df_today[df_today['日付'] == latest_date_str]
-        today_race_count = len(df_today_latest['レース名'].unique())
+        venue_col = '会場' if '会場' in df_today_latest.columns else ('競馬場' if '競馬場' in df_today_latest.columns else '')
+        if venue_col:
+            today_race_count = len(df_today_latest[[venue_col, 'レース名']].drop_duplicates())
+        else:
+            today_race_count = len(df_today_latest['レース名'].unique())
     
     today_investment = today_target_count * 300
 
@@ -741,9 +746,7 @@ if menu == "📊 ダッシュボード":
 
     st.write("")
 
-    # ==========================================
-    # 📈 回収率推移グラフ（🌟 枠外飛び出し防止・自動スケール化）
-    # ==========================================
+    # 回収率推移グラフ（上限自動計算）
     col_chart_title, col_chart_select = st.columns([6, 4])
     with col_chart_title:
         st.markdown('<div style="font-size:1.1rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">回収率推移</div>', unsafe_allow_html=True)
@@ -755,7 +758,7 @@ if menu == "📊 ダッシュボード":
         )
 
     fig = go.Figure()
-    max_plot_val = 110.0  # デフォルトの上限
+    max_plot_val = 110.0
 
     if (has_real_ai or has_real_usr) and df_daily_log is not None and not df_daily_log.empty:
         df_plot = df_daily_calc.copy()
@@ -825,7 +828,6 @@ if menu == "📊 ダッシュボード":
         annotation_font_color="#94A3B8"
     )
 
-    # 🌟 上限を自動計算（最大値 + 15%の余白を持たせて綺麗に収める）
     y_max = max(120.0, max_plot_val * 1.15)
 
     fig.update_layout(
