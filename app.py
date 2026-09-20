@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 カスタムCSS（🌟 左端バー＆ボタンタブを恒久固定）
+# 🎨 カスタムCSS（🌟 コンテンツ消失バグ修正＆デザイン固定）
 # ==========================================
 st.markdown("""
 <style>
@@ -76,7 +76,6 @@ st.markdown("""
         color: #FFFFFF !important;
     }
 
-    /* 🌟 出馬表画面の天候切り替えボタン */
     div[data-testid="stRadio"] div[role="radiogroup"] label {
         background-color: #141A29 !important;
         border: 1px solid #2B354F !important;
@@ -100,9 +99,8 @@ st.markdown("""
         font-weight: 700 !important;
     }
 
-    /* 🌟 タブデザイン（赤い下線を徹底完全消去 ＆ ボタン型デザインを絶対維持） */
-    .stApp .stTabs [data-baseweb="tab-list"],
-    [data-testid="stTabs"] [data-baseweb="tab-list"] {
+    /* 🌟 タブデザイン（赤い下線のみを安全に消去し、ボタン型を維持） */
+    div[data-testid="stTabs"] [data-baseweb="tab-list"] {
         gap: 8px !important;
         background-color: transparent !important;
         margin-bottom: 8px !important;
@@ -112,8 +110,7 @@ st.markdown("""
         align-items: center !important;
         border-bottom: none !important;
     }
-    .stApp .stTabs [data-baseweb="tab"],
-    [data-testid="stTabs"] [data-baseweb="tab"] {
+    div[data-testid="stTabs"] [data-baseweb="tab"] {
         background-color: #141A29 !important;
         border: 1px solid #2B354F !important;
         border-radius: 8px !important;
@@ -124,41 +121,30 @@ st.markdown("""
         height: 34px !important;
         outline: none !important;
     }
-    .stApp .stTabs [data-baseweb="tab"]:hover,
-    [data-testid="stTabs"] [data-baseweb="tab"]:hover {
+    div[data-testid="stTabs"] [data-baseweb="tab"]:hover {
         color: #FFFFFF !important;
         border-color: #6366F1 !important;
         background-color: #1A2238 !important;
     }
-    .stApp .stTabs [aria-selected="true"],
-    .stApp .stTabs [data-baseweb="tab"][aria-selected="true"],
-    [data-testid="stTabs"] [aria-selected="true"] {
+    div[data-testid="stTabs"] [aria-selected="true"],
+    div[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {
         background-color: #1E2238 !important;
         border-color: #6366F1 !important;
         color: #FFFFFF !important;
         box-shadow: 0 0 10px rgba(99, 102, 241, 0.4) !important;
     }
-    /* 赤いアンダーライン要素を完全に殺す */
-    .stApp .stTabs [data-baseweb="tab-highlight"],
-    .stApp .stTabs [data-baseweb="tab-border"],
-    [data-testid="stTabs"] [data-baseweb="tab-highlight"],
-    [data-testid="stTabs"] [data-baseweb="tab-border"],
-    .stTabs hr,
-    .stTabs [role="tablist"] ~ div {
+    /* 🚨 危険なCSSを排除し、ハイライト要素だけを無効化 */
+    div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
+    div[data-testid="stTabs"] [data-baseweb="tab-border"] {
         display: none !important;
-        height: 0px !important;
-        width: 0px !important;
-        background: transparent !important;
-        border: none !important;
         visibility: hidden !important;
-        opacity: 0 !important;
+        background: transparent !important;
     }
-    .stTabs [data-baseweb="tab-panel"] {
+    div[data-testid="stTabs"] [data-baseweb="tab-panel"] {
         padding: 0px !important;
         margin: 0px !important;
     }
 
-    /* 🌟 右側のヘッダー（左のタブと全く同じ高さ38px・枠のすぐ上に配置） */
     .right-card-header {
         height: 48px !important;
         min-height: 38px !important;
@@ -274,7 +260,7 @@ st.markdown("""
         padding: 1.4rem !important;
     }
 
-    /* 🌟 リッチKPIカード（上下右の線と、左端のカラーバーを完全独立指定！絶対消えない仕様） */
+    /* 🌟 リッチKPIカード（左端カラーバー絶対固定・背景復活） */
     .kpi-rich-card {
         background-color: #141A29 !important;
         border-top: 1px solid #1E273D !important;
@@ -625,15 +611,11 @@ if menu == "📊 ダッシュボード":
     
     today_investment = today_target_count * 300
 
-    # ==========================================
-    # 🌟 メインKPIカード（左端カラーバーを完全独立指定・絶対に消えない仕様）
-    # ==========================================
     c1, c2 = st.columns(2)
 
     with c1:
         tab_all, tab_turf, tab_dirt = st.tabs(["🌐 総合", "🟢 芝", "🟤 ダート"])
 
-        # 1. 総合（インディゴの帯）
         with tab_all:
             ai_all_profit = ai_all_ret - ai_all_inv
             p_class = "kpi-profit-pos" if ai_all_profit >= 0 else "kpi-profit-neg"
@@ -658,7 +640,6 @@ if menu == "📊 ダッシュボード":
             </div>
             """, unsafe_allow_html=True)
 
-        # 2. 芝（エメラルドグリーンの帯）
         with tab_turf:
             ai_turf_profit = ai_turf_ret - ai_turf_inv
             p_class = "kpi-profit-pos" if ai_turf_profit >= 0 else "kpi-profit-neg"
@@ -683,7 +664,6 @@ if menu == "📊 ダッシュボード":
             </div>
             """, unsafe_allow_html=True)
 
-        # 3. ダート（アンバーオレンジの帯）
         with tab_dirt:
             ai_dirt_profit = ai_dirt_ret - ai_dirt_inv
             p_class = "kpi-profit-pos" if ai_dirt_profit >= 0 else "kpi-profit-neg"
@@ -709,7 +689,6 @@ if menu == "📊 ダッシュボード":
             """, unsafe_allow_html=True)
 
     with c2:
-        # 🌟 あなたの実戦（2枚目の画像の通り、左端に鮮やかなエメラルドグリーンの帯を完全復元）
         st.markdown('<div class="right-card-header">👤 あなたの実戦 通算成績 (実投票)</div>', unsafe_allow_html=True)
 
         if has_real_usr and (usr_tot_inv > 0 or usr_tot_races > 0):
@@ -775,7 +754,6 @@ if menu == "📊 ダッシュボード":
 
     st.write("")
 
-    # 回収率推移グラフ（上限自動計算）
     col_chart_title, col_chart_select = st.columns([6, 4])
     with col_chart_title:
         st.markdown('<div style="font-size:1.1rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">回収率推移</div>', unsafe_allow_html=True)
