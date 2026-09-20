@@ -76,6 +76,30 @@ st.markdown("""
         color: #FFFFFF !important;
     }
 
+    /* 🌟 メイン画面の天候シナリオ切り替えボタン（文字をクッキリ純白・見やすく改善） */
+    div[data-testid="stRadio"] div[role="radiogroup"] label {
+        background-color: #141A29 !important;
+        border: 1px solid #1E273D !important;
+        border-radius: 8px !important;
+        padding: 6px 14px !important;
+        margin-right: 8px !important;
+        cursor: pointer !important;
+    }
+    div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
+        border-color: #6366F1 !important;
+        background-color: #1A2238 !important;
+    }
+    div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
+        background-color: #1E2238 !important;
+        border-color: #6366F1 !important;
+        box-shadow: 0 0 10px rgba(99, 102, 241, 0.3) !important;
+    }
+    div[data-testid="stRadio"] div[role="radiogroup"] label p {
+        color: #FFFFFF !important; /* クッキリ純白 */
+        font-size: 0.95rem !important;
+        font-weight: 700 !important;
+    }
+
     /* 🌟 タブデザイン（高コントラスト・文字がクッキリ見える純白仕様） */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px !important;
@@ -91,7 +115,7 @@ st.markdown("""
         background-color: #141A29 !important;
         border: 1px solid #2B354F !important;
         border-radius: 8px !important;
-        color: #F3F4F6 !important; /* クッキリ純白！非アクティブでも鮮明 */
+        color: #F3F4F6 !important;
         padding: 6px 14px !important;
         font-size: 0.88rem !important;
         font-weight: 700 !important;
@@ -108,7 +132,6 @@ st.markdown("""
         color: #FFFFFF !important;
         box-shadow: 0 0 10px rgba(99, 102, 241, 0.4) !important;
     }
-    /* 🌟 タブパネル内の余白をゼロにしてカード開始位置を完全同期 */
     .stTabs [data-baseweb="tab-panel"] {
         padding: 0px !important;
         margin: 0px !important;
@@ -549,12 +572,7 @@ if menu == "📊 ダッシュボード":
     if df_target is not None and not df_target.empty and '日付' in df_target.columns:
         latest_date_str = df_target['日付'].max()
         df_target_latest = df_target[df_target['日付'] == latest_date_str]
-        # 公式発表のデータだけを抽出して本日の勝負レース数を計算
-        if '馬場想定' in df_target_latest.columns:
-            df_official = df_target_latest[df_target_latest['馬場想定'].str.contains("公式発表", na=False)]
-            today_target_count = len(df_official[['競馬場', 'レース名']].drop_duplicates())
-        else:
-            today_target_count = len(df_target_latest[['競馬場', 'レース名']].drop_duplicates())
+        today_target_count = len(df_target_latest[['競馬場', 'レース名']].drop_duplicates())
 
     if df_today is not None and not df_today.empty and '日付' in df_today.columns:
         if not latest_date_str:
@@ -649,7 +667,6 @@ if menu == "📊 ダッシュボード":
             """, unsafe_allow_html=True)
 
     with c2:
-        # 🌟 あなたの実戦の文字を枠のすぐ上に配置（左のタブと全く同じ高さ38px）
         st.markdown('<div class="right-card-header">👤 あなたの実戦 通算成績 (実投票)</div>', unsafe_allow_html=True)
 
         if has_real_usr and (usr_tot_inv > 0 or usr_tot_races > 0):
@@ -717,7 +734,7 @@ if menu == "📊 ダッシュボード":
     st.write("")
 
     # ==========================================
-    # 📈 回収率推移グラフ（🌟 0%の緑の点もしっかり描画修正）
+    # 📈 回収率推移グラフ（0%の緑の点もしっかり描画）
     # ==========================================
     col_chart_title, col_chart_select = st.columns([6, 4])
     with col_chart_title:
@@ -738,7 +755,6 @@ if menu == "📊 ダッシュボード":
         if not df_plot.empty:
             ai_inv_col = 'AI投資額' if 'AI投資額' in df_plot.columns else ('投資額' if '投資額' in df_plot.columns else '')
             ai_ret_col = 'AI回収額' if 'AI回収額' in df_plot.columns else ('払戻額' if '払戻額' in df_plot.columns else '')
-            # 🌟 回収額が0でも投資があれば列を正しく認識
             usr_inv_col = 'ユーザー投資額' if 'ユーザー投資額' in df_plot.columns else ('投資額' if '投資額' in df_plot.columns else '')
             usr_ret_col = 'ユーザー回収額' if 'ユーザー回収額' in df_plot.columns else ('払戻額' if '払戻額' in df_plot.columns else '')
 
@@ -765,7 +781,6 @@ if menu == "📊 ダッシュボード":
                     hovertemplate="%{x}<br>AI: %{y:.1f}%<extra></extra>"
                 ))
 
-            # 🌟 あなたの実戦推移（投資額が0より大きければ、回収額が0でも緑の点を出力）
             if usr_inv_col and usr_ret_col and sub_df[usr_inv_col].sum() > 0:
                 sub_df['USR_CUM_I'] = sub_df[usr_inv_col].cumsum()
                 sub_df['USR_CUM_R'] = sub_df[usr_ret_col].cumsum()
@@ -806,14 +821,13 @@ if menu == "📊 ダッシュボード":
         font=dict(color="#94A3B8", size=11),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=11, color="#CBD5E1")),
         xaxis=dict(showgrid=True, gridcolor="#1E273D", zeroline=False),
-        # 🌟 0%の点が半分見切れないよう yaxis の下限を -8 に調整
         yaxis=dict(showgrid=True, gridcolor="#1E273D", zeroline=True, zerolinecolor="#334155", ticksuffix="%", range=[-8, 115]),
         hovermode="x unified"
     )
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
 # ==========================================
-# 🎯 画面 2: 厳選勝負レース（🌟 4天候マルチシナリオ切り替え機能のみ追加）
+# 🎯 画面 2: 厳選勝負レース（🌟 空欄でも全件復元 ＆ 文字を純白化）
 # ==========================================
 elif menu == "🎯 厳選勝負レース":
     st.markdown('<div class="main-title">本日の厳選勝負レース</div>', unsafe_allow_html=True)
@@ -823,21 +837,33 @@ elif menu == "🎯 厳選勝負レース":
         latest_date_str = df_target['日付'].max()
         df_target_latest = df_target[df_target['日付'] == latest_date_str]
         
-        # 🌟 馬場想定を切り替えるボタン（メインデザインは一切触らずにこの画面のみ追加）
+        # 🌟 馬場想定データが存在するか判定
+        has_baba_data = False
         if '馬場想定' in df_target_latest.columns:
-            st.markdown('<div style="font-size:0.95rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">⛅ 確認したい天候シナリオ</div>', unsafe_allow_html=True)
-            sel_baba = st.radio("", ["📢 公式発表", "☀️ 良", "⛅ 稍重", "☂️ 重", "🌀 不良"], horizontal=True, label_visibility="collapsed")
+            has_baba_data = (df_target_latest['馬場想定'].astype(str).str.strip() != '').any()
+            
+        if has_baba_data:
+            st.markdown('<div style="font-size:0.95rem; font-weight:700; color:#FFFFFF; margin-bottom:8px;">⛅ 確認したい天候シナリオ</div>', unsafe_allow_html=True)
+            sel_baba = st.radio("", ["📢 公式発表 (推奨)", "☀️ 良", "⛅ 稍重", "☂️ 重", "🌀 不良", "📋 すべて表示"], horizontal=True, label_visibility="collapsed")
             st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
             
-            if sel_baba == "📢 公式発表":
-                df_target_latest = df_target_latest[df_target_latest['馬場想定'].str.contains("公式発表", na=False)]
+            if sel_baba == "📢 公式発表 (推奨)":
+                filtered = df_target_latest[df_target_latest['馬場想定'].str.contains("公式発表", na=False)]
+                if not filtered.empty:
+                    df_target_latest = filtered
+            elif sel_baba == "📋 すべて表示":
+                pass
             else:
                 b_kw = sel_baba.replace("☀️ ", "").replace("⛅ ", "").replace("☂️ ", "").replace("🌀 ", "")
-                df_target_latest = df_target_latest[df_target_latest['馬場想定'].str.contains(f"【想定】{b_kw}", na=False)]
+                filtered = df_target_latest[df_target_latest['馬場想定'].str.contains(f"【想定】{b_kw}", na=False)]
+                if not filtered.empty:
+                    df_target_latest = filtered
+                else:
+                    df_target_latest = pd.DataFrame()
         
-        unique_races = df_target_latest[['日付', '競馬場', 'レース名', '条件', '軸馬 (◎)']].drop_duplicates()
+        unique_races = df_target_latest[['日付', '競馬場', 'レース名', '条件', '軸馬 (◎)']].drop_duplicates() if not df_target_latest.empty else pd.DataFrame()
         
-        if len(unique_races) == 0:
+        if unique_races.empty:
             st.info("この馬場状態での勝負レースはありません（見送り推奨）。")
         else:
             for _, r in unique_races.iterrows():
@@ -1099,27 +1125,6 @@ elif menu == "💻 ターミナル操作マニュアル":
         <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🏁 3. 【手動結果回収】3点買い的中照合 ＆ 日次収支自動集計</h4>
     """, unsafe_allow_html=True)
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 result.py", language="bash")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("""
-    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
-        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">📅 4. 過去日付の予想シミュレーション</h4>
-    """, unsafe_allow_html=True)
-    st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 run.py 20260912 20260913", language="bash")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("""
-    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
-        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">⏰ 5. 自動タイマーの実行ログ確認</h4>
-    """, unsafe_allow_html=True)
-    st.code("cat /home/ozdnyzww1/keiba_cron.log", language="bash")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("""
-    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
-        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🧹 6. メモリ解放 ＆ 停止コマンド（緊急用）</h4>
-    """, unsafe_allow_html=True)
-    st.code("killall -9 chromium chromium-driver chromedriver chrome 2>/dev/null", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
