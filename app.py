@@ -549,7 +549,12 @@ if menu == "📊 ダッシュボード":
     if df_target is not None and not df_target.empty and '日付' in df_target.columns:
         latest_date_str = df_target['日付'].max()
         df_target_latest = df_target[df_target['日付'] == latest_date_str]
-        today_target_count = len(df_target_latest[['競馬場', 'レース名']].drop_duplicates())
+        # 公式発表のデータだけを抽出して本日の勝負レース数を計算
+        if '馬場想定' in df_target_latest.columns:
+            df_official = df_target_latest[df_target_latest['馬場想定'].str.contains("公式発表", na=False)]
+            today_target_count = len(df_official[['競馬場', 'レース名']].drop_duplicates())
+        else:
+            today_target_count = len(df_target_latest[['競馬場', 'レース名']].drop_duplicates())
 
     if df_today is not None and not df_today.empty and '日付' in df_today.columns:
         if not latest_date_str:
@@ -808,7 +813,7 @@ if menu == "📊 ダッシュボード":
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
 # ==========================================
-# 🎯 画面 2: 厳選勝負レース
+# 🎯 画面 2: 厳選勝負レース（🌟 4天候マルチシナリオ切り替え機能のみ追加）
 # ==========================================
 elif menu == "🎯 厳選勝負レース":
     st.markdown('<div class="main-title">本日の厳選勝負レース</div>', unsafe_allow_html=True)
@@ -818,40 +823,56 @@ elif menu == "🎯 厳選勝負レース":
         latest_date_str = df_target['日付'].max()
         df_target_latest = df_target[df_target['日付'] == latest_date_str]
         
+        # 🌟 馬場想定を切り替えるボタン（メインデザインは一切触らずにこの画面のみ追加）
+        if '馬場想定' in df_target_latest.columns:
+            st.markdown('<div style="font-size:0.95rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">⛅ 確認したい天候シナリオ</div>', unsafe_allow_html=True)
+            sel_baba = st.radio("", ["📢 公式発表", "☀️ 良", "⛅ 稍重", "☂️ 重", "🌀 不良"], horizontal=True, label_visibility="collapsed")
+            st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
+            
+            if sel_baba == "📢 公式発表":
+                df_target_latest = df_target_latest[df_target_latest['馬場想定'].str.contains("公式発表", na=False)]
+            else:
+                b_kw = sel_baba.replace("☀️ ", "").replace("⛅ ", "").replace("☂️ ", "").replace("🌀 ", "")
+                df_target_latest = df_target_latest[df_target_latest['馬場想定'].str.contains(f"【想定】{b_kw}", na=False)]
+        
         unique_races = df_target_latest[['日付', '競馬場', 'レース名', '条件', '軸馬 (◎)']].drop_duplicates()
-        for _, r in unique_races.iterrows():
-            sub_df = df_target_latest[(df_target_latest['競馬場'] == r['競馬場']) & (df_target_latest['レース名'] == r['レース名'])]
-            
-            st.markdown(f"""
-            <div class="race-card">
-                <div class="race-header">
-                    <span class="race-name">📍 [{r['競馬場']}] {r['レース名']} ({r['条件']})</span>
-                    <span class="race-badge">黄金条件合致</span>
-                </div>
-                <div style="font-size: 0.95rem; color: #E2E8F0; margin-bottom: 0.8rem;">
-                    🎯 <b>軸馬 (◎)</b> : <span style="color: #6366F1; font-weight:700;">{r['軸馬 (◎)']}</span>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            num_bets = min(len(sub_df), 3)
-            cols = st.columns(num_bets)
-            bet_meta = [
-                ("点① 本線・抑え", "#3B82F6"),
-                ("点② 相手本線", "#10B981"),
-                ("点③ 利益の核（△1）", "#F59E0B")
-            ]
-            for b_i in range(num_bets):
-                with cols[b_i]:
-                    row_b = sub_df.iloc[b_i]
-                    b_title, b_color = bet_meta[b_i]
-                    st.markdown(f"""
-                    <div style="background:#1B2338; padding:10px 12px; border-radius:8px; border-left:3px solid {b_color}; margin-bottom:6px;">
-                        <span style="color:#94A3B8; font-size:0.8rem;">{b_title}</span><br>
-                        <b style="font-size:1.05rem; color:#FFFFFF;">馬連 {row_b['買い目']}</b><br>
-                        <span style="font-size:0.82rem; color:#CBD5E1;">相手: {row_b['相手馬']} ｜ 想定: {row_b['想定オッズ']}</span>
+        
+        if len(unique_races) == 0:
+            st.info("この馬場状態での勝負レースはありません（見送り推奨）。")
+        else:
+            for _, r in unique_races.iterrows():
+                sub_df = df_target_latest[(df_target_latest['競馬場'] == r['競馬場']) & (df_target_latest['レース名'] == r['レース名'])]
+                
+                st.markdown(f"""
+                <div class="race-card">
+                    <div class="race-header">
+                        <span class="race-name">📍 [{r['競馬場']}] {r['レース名']} ({r['条件']})</span>
+                        <span class="race-badge">黄金条件合致</span>
                     </div>
-                    """, unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+                    <div style="font-size: 0.95rem; color: #E2E8F0; margin-bottom: 0.8rem;">
+                        🎯 <b>軸馬 (◎)</b> : <span style="color: #6366F1; font-weight:700;">{r['軸馬 (◎)']}</span>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                num_bets = min(len(sub_df), 3)
+                cols = st.columns(num_bets)
+                bet_meta = [
+                    ("点① 本線・抑え", "#3B82F6"),
+                    ("点② 相手本線", "#10B981"),
+                    ("点③ 利益の核（△1）", "#F59E0B")
+                ]
+                for b_i in range(num_bets):
+                    with cols[b_i]:
+                        row_b = sub_df.iloc[b_i]
+                        b_title, b_color = bet_meta[b_i]
+                        st.markdown(f"""
+                        <div style="background:#1B2338; padding:10px 12px; border-radius:8px; border-left:3px solid {b_color}; margin-bottom:6px;">
+                            <span style="color:#94A3B8; font-size:0.8rem;">{b_title}</span><br>
+                            <b style="font-size:1.05rem; color:#FFFFFF;">馬連 {row_b['買い目']}</b><br>
+                            <span style="font-size:0.82rem; color:#CBD5E1;">相手: {row_b['相手馬']} ｜ 想定: {row_b['想定オッズ']}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("スプレッドシートに最新の勝負レースデータがありません。")
 
