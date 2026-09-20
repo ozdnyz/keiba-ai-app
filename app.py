@@ -329,7 +329,6 @@ st.markdown("""
         border: 1px solid #6366F1;
     }
 
-    /* レース判定バッジ */
     .status-badge-buy {
         background: rgba(16, 185, 129, 0.15);
         border: 1px solid #10B981;
@@ -493,7 +492,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 🚀 画面 1: 📊 ダッシュボード（完全維持）
+# 🚀 画面 1: 📊 ダッシュボード
 # ==========================================
 if menu == "📊 ダッシュボード":
     col_h_left, col_h_right = st.columns([7, 3])
@@ -599,7 +598,6 @@ if menu == "📊 ダッシュボード":
     
     today_investment = today_target_count * 300
 
-    # 左右KPIカード
     c1, c2 = st.columns(2)
 
     with c1:
@@ -890,7 +888,7 @@ elif menu == "🏇 全レース出馬表":
     st.markdown('<div class="main-title">全レース出馬表 ＆ AI評価印</div>', unsafe_allow_html=True)
     st.markdown('<div class="last-update">馬場状態を切り替えて、レースの買い/見送り判定と各頭の印をシミュレーションできます</div>', unsafe_allow_html=True)
 
-    # 🌟 ボタンをタブの真上に常時表示（データ有無にかかわらず必ず表示）
+    # 🌟 ボタンをタブの真上に常時表示
     st.markdown('<div style="font-size:0.95rem; font-weight:700; color:#FFFFFF; margin-bottom:6px;">⛅ 馬場状態の切り替えシミュレーション</div>', unsafe_allow_html=True)
     sel_baba = st.radio("", ["☀️ 良", "⛅ 稍重", "☂️ 重", "🌀 不良"], horizontal=True, label_visibility="collapsed")
     st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
@@ -900,7 +898,6 @@ elif menu == "🏇 全レース出馬表":
         latest_date_str = df_today['日付'].max()
         df_today_latest = df_today[df_today['日付'] == latest_date_str]
         
-        # 選択された馬場で絞り込み（もしデータに馬場列があれば一致するものを、無ければそのまま全頭表示）
         if '馬場' in df_today_latest.columns and (df_today_latest['馬場'] == b_val).any():
             df_today_disp = df_today_latest[df_today_latest['馬場'] == b_val]
         else:
@@ -923,7 +920,6 @@ elif menu == "🏇 全レース出馬表":
                     cond = str(sub_df.iloc[0]['芝・ダ・障']) + str(sub_df.iloc[0]['距離']) + "m"
                     
                     with st.expander(f"🏁 {venue} {rname} （{cond}）"):
-                        # レース全体のAI判定（買い or 見送り）を表示
                         if 'レース判定' in sub_df.columns:
                             r_judge = str(sub_df.iloc[0]['レース判定'])
                             r_detail = str(sub_df.iloc[0].get('レース判定詳細', ''))
@@ -982,7 +978,7 @@ elif menu == "🏇 全レース出馬表":
         st.info("スプレッドシートに最新の全頭データがありません。")
 
 # ==========================================
-# 💰 画面 4: 収支入力・管理（完全維持）
+# 💰 画面 4: 収支入力・管理
 # ==========================================
 elif menu == "💰 収支入力・管理":
     st.markdown('<div class="main-title">日次実収支の記録</div>', unsafe_allow_html=True)
@@ -1069,7 +1065,7 @@ elif menu == "💰 収支入力・管理":
                 st.error("🚨 スプレッドシートの認証に失敗しました。")
 
 # ==========================================
-# 💻 画面 5: ターミナル操作マニュアル（完全維持）
+# 💻 画面 5: ターミナル操作マニュアル（🌟 1〜6番まで完全復元）
 # ==========================================
 elif menu == "💻 ターミナル操作マニュアル":
     st.markdown('<div class="main-title">ターミナル操作マニュアル</div>', unsafe_allow_html=True)
@@ -1129,8 +1125,29 @@ elif menu == "💻 ターミナル操作マニュアル":
     st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 result.py", language="bash")
     st.markdown("</div>", unsafe_allow_html=True)
 
+    st.markdown("""
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">📅 4. 過去日付の予想シミュレーション</h4>
+    """, unsafe_allow_html=True)
+    st.code("cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 run.py 20260912 20260913", language="bash")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">⏰ 5. 自動タイマーの実行ログ確認</h4>
+    """, unsafe_allow_html=True)
+    st.code("cat /home/ozdnyzww1/keiba_cron.log", language="bash")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🧹 6. メモリ解放 ＆ 停止コマンド（緊急用）</h4>
+    """, unsafe_allow_html=True)
+    st.code("killall -9 chromium chromium-driver chromedriver chrome 2>/dev/null", language="bash")
+    st.markdown("</div>", unsafe_allow_html=True)
+
 # ==========================================
-# 🗄️ 過去データ分析（完全維持）
+# 🗄️ 過去データ分析
 # ==========================================
 elif menu == "🗄️ 過去データ分析":
     st.markdown('<div class="main-title">過去データバックテスト分析（2022〜2026年）</div>', unsafe_allow_html=True)
@@ -1145,7 +1162,7 @@ elif menu == "🗄️ 過去データ分析":
     """)
 
 # ==========================================
-# 📈 スプレッドシート連携（完全維持）
+# 📈 スプレッドシート連携
 # ==========================================
 elif menu == "📈 スプレッドシート連携":
     st.markdown('<div class="main-title">Google スプレッドシート連携ステータス</div>', unsafe_allow_html=True)
