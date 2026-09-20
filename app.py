@@ -255,18 +255,18 @@ st.markdown("""
 
     /* 🌟 リッチKPIカード（高さ165px完全固定・上下配置・元の枠質感を完全維持） */
     .kpi-rich-card {
-        background: #141A29;
-        border: 1px solid #1E273D;
-        border-radius: 14px;
-        padding: 1.1rem 1.25rem;
-        margin-bottom: 0.8rem;
+        background: #141A29 !important;
+        border: 1px solid #1E273D !important;
+        border-radius: 14px !important;
+        padding: 1.1rem 1.25rem !important;
+        margin-bottom: 0.8rem !important;
         height: 165px !important;
         min-height: 165px !important;
         max-height: 165px !important;
         box-sizing: border-box !important;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
     }
     .kpi-rich-title {
         font-size: 0.88rem;
@@ -530,7 +530,6 @@ if menu == "📊 ダッシュボード":
             if any(k in col for k in ['投資', '回収', '払戻', 'レース', '的中', 'R数']):
                 df_daily_calc[col] = pd.to_numeric(df_daily_calc[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
 
-        # 1. ユーザー実戦データ取得
         if 'ユーザー投資額' in df_daily_calc.columns:
             usr_tot_inv = int(df_daily_calc['ユーザー投資額'].sum())
             usr_tot_ret = int(df_daily_calc['ユーザー回収額'].sum())
@@ -545,7 +544,6 @@ if menu == "📊 ダッシュボード":
         if usr_tot_inv > 0 or usr_tot_races > 0:
             has_real_usr = True
 
-        # 2. AI理論 総合データの取得
         if 'AI投資額' in df_daily_calc.columns and df_daily_calc['AI投資額'].sum() > 0:
             ai_all_inv = int(df_daily_calc['AI投資額'].sum())
             ai_all_ret = int(df_daily_calc['AI回収額'].sum())
@@ -560,7 +558,6 @@ if menu == "📊 ダッシュボード":
             if ai_all_inv > 0 or ai_all_races > 0:
                 has_real_ai = True
 
-        # 3. 芝・ダート別の実データ集計
         if 'AI芝投資額' in df_daily_calc.columns:
             ai_turf_inv = int(df_daily_calc['AI芝投資額'].sum())
             ai_turf_ret = int(df_daily_calc['AI芝回収額'].sum())
@@ -573,7 +570,6 @@ if menu == "📊 ダッシュボード":
             ai_dirt_races = int(df_daily_calc.get('AIダートレース数', pd.Series([0]*len(df_daily_calc))).sum())
             ai_dirt_hits = int(df_daily_calc.get('AIダート的中数', pd.Series([0]*len(df_daily_calc))).sum())
 
-    # 率の算出
     ai_all_roi = (ai_all_ret / ai_all_inv * 100) if ai_all_inv > 0 else 0.0
     ai_all_hit_rate = (ai_all_hits / ai_all_races * 100) if ai_all_races > 0 else 0.0
 
@@ -839,7 +835,7 @@ if menu == "📊 ダッシュボード":
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
 # ==========================================
-# 🎯 画面 2: 厳選勝負レース（🌟 朝のrun.py結果をそのまま確実に表示）
+# 🎯 画面 2: 厳選勝負レース（朝のrun.py結果をそのまま確実に表示）
 # ==========================================
 elif menu == "🎯 厳選勝負レース":
     st.markdown('<div class="main-title">本日の厳選勝負レース</div>', unsafe_allow_html=True)
@@ -888,23 +884,24 @@ elif menu == "🎯 厳選勝負レース":
         st.info("スプレッドシートに最新の勝負レースデータがありません。")
 
 # ==========================================
-# 🏇 画面 3: 全レース出馬表（🌟 天候シナリオ切り替え＆判定表示）
+# 🏇 画面 3: 全レース出馬表（🌟 天候切り替えボタンを常時表示）
 # ==========================================
 elif menu == "🏇 全レース出馬表":
     st.markdown('<div class="main-title">全レース出馬表 ＆ AI評価印</div>', unsafe_allow_html=True)
     st.markdown('<div class="last-update">馬場状態を切り替えて、レースの買い/見送り判定と各頭の印をシミュレーションできます</div>', unsafe_allow_html=True)
 
+    # 🌟 ボタンをタブの真上に常時表示（データ有無にかかわらず必ず表示）
+    st.markdown('<div style="font-size:0.95rem; font-weight:700; color:#FFFFFF; margin-bottom:6px;">⛅ 馬場状態の切り替えシミュレーション</div>', unsafe_allow_html=True)
+    sel_baba = st.radio("", ["☀️ 良", "⛅ 稍重", "☂️ 重", "🌀 不良"], horizontal=True, label_visibility="collapsed")
+    st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
+    b_val = sel_baba.replace("☀️ ", "").replace("⛅ ", "").replace("☂️ ", "").replace("🌀 ", "")
+
     if df_today is not None and not df_today.empty and '日付' in df_today.columns:
         latest_date_str = df_today['日付'].max()
         df_today_latest = df_today[df_today['日付'] == latest_date_str]
         
-        # 🌟 馬場切り替えボタンを設置（見やすい純白テキスト仕様）
-        has_baba_col = '馬場' in df_today_latest.columns
-        if has_baba_col:
-            st.markdown('<div style="font-size:0.95rem; font-weight:700; color:#FFFFFF; margin-bottom:6px;">⛅ 馬場状態の切り替えシミュレーション</div>', unsafe_allow_html=True)
-            sel_baba = st.radio("", ["☀️ 良", "⛅ 稍重", "☂️ 重", "🌀 不良"], horizontal=True, label_visibility="collapsed")
-            st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
-            b_val = sel_baba.replace("☀️ ", "").replace("⛅ ", "").replace("☂️ ", "").replace("🌀 ", "")
+        # 選択された馬場で絞り込み（もしデータに馬場列があれば一致するものを、無ければそのまま全頭表示）
+        if '馬場' in df_today_latest.columns and (df_today_latest['馬場'] == b_val).any():
             df_today_disp = df_today_latest[df_today_latest['馬場'] == b_val]
         else:
             df_today_disp = df_today_latest
@@ -926,7 +923,7 @@ elif menu == "🏇 全レース出馬表":
                     cond = str(sub_df.iloc[0]['芝・ダ・障']) + str(sub_df.iloc[0]['距離']) + "m"
                     
                     with st.expander(f"🏁 {venue} {rname} （{cond}）"):
-                        # 🌟 レース全体のAI判定（買い or 見送り）を表示
+                        # レース全体のAI判定（買い or 見送り）を表示
                         if 'レース判定' in sub_df.columns:
                             r_judge = str(sub_df.iloc[0]['レース判定'])
                             r_detail = str(sub_df.iloc[0].get('レース判定詳細', ''))
