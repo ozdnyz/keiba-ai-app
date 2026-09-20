@@ -253,7 +253,7 @@ st.markdown("""
         padding: 1.4rem !important;
     }
 
-    /* 🌟 リッチKPIカード（高さ165px完全固定・上下配置・元の枠質感を完全維持） */
+    /* 🌟 リッチKPIカード（高さ165px完全固定・上下配置・左端バー表示対応） */
     .kpi-rich-card {
         background: #141A29 !important;
         border: 1px solid #1E273D !important;
@@ -268,6 +268,11 @@ st.markdown("""
         flex-direction: column !important;
         justify-content: space-between !important;
     }
+    .kpi-bar-indigo { border-left: 4px solid #6366F1 !important; }
+    .kpi-bar-green  { border-left: 4px solid #10B981 !important; }
+    .kpi-bar-orange { border-left: 4px solid #F59E0B !important; }
+    .kpi-bar-blue   { border-left: 4px solid #3B82F6 !important; }
+
     .kpi-rich-title {
         font-size: 0.88rem;
         color: #E2E8F0;
@@ -492,7 +497,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 🚀 画面 1: 📊 ダッシュボード（🌟 レース数集計を会場＋レース名で完全修正）
+# 🚀 画面 1: 📊 ダッシュボード（アクセントバー完全適用）
 # ==========================================
 if menu == "📊 ダッシュボード":
     col_h_left, col_h_right = st.columns([7, 3])
@@ -590,7 +595,7 @@ if menu == "📊 ダッシュボード":
         df_target_latest = df_target[df_target['日付'] == latest_date_str]
         today_target_count = len(df_target_latest[['競馬場', 'レース名']].drop_duplicates())
 
-    # 🌟【重要修正】「会場」＋「レース名」のセットでユニーク判定し、同名レースの重複合算を防止！
+    # 🌟「会場」＋「レース名」のセットでユニーク判定し、同名レースの重複合算を防止
     if df_today is not None and not df_today.empty and '日付' in df_today.columns:
         if not latest_date_str:
             latest_date_str = df_today['日付'].max()
@@ -613,7 +618,7 @@ if menu == "📊 ダッシュボード":
             p_class = "kpi-profit-pos" if ai_all_profit >= 0 else "kpi-profit-neg"
             p_sign = "+" if ai_all_profit > 0 else ""
             st.markdown(f"""
-            <div class="kpi-rich-card" style="border-left: 4px solid #6366F1;">
+            <div class="kpi-rich-card kpi-bar-indigo">
                 <div class="kpi-rich-title">🌐 AI理論 総合実績 <span style="color:#6366F1; font-weight:600;">(実データ連動)</span></div>
                 <div class="kpi-main-metrics">
                     <div>
@@ -637,7 +642,7 @@ if menu == "📊 ダッシュボード":
             p_class = "kpi-profit-pos" if ai_turf_profit >= 0 else "kpi-profit-neg"
             p_sign = "+" if ai_turf_profit > 0 else ""
             st.markdown(f"""
-            <div class="kpi-rich-card" style="border-left: 4px solid #10B981;">
+            <div class="kpi-rich-card kpi-bar-green">
                 <div class="kpi-rich-title">🟢 芝レース実績 <span style="color:#10B981; font-weight:600;">(実データ連動)</span></div>
                 <div class="kpi-main-metrics">
                     <div>
@@ -661,7 +666,7 @@ if menu == "📊 ダッシュボード":
             p_class = "kpi-profit-pos" if ai_dirt_profit >= 0 else "kpi-profit-neg"
             p_sign = "+" if ai_dirt_profit > 0 else ""
             st.markdown(f"""
-            <div class="kpi-rich-card" style="border-left: 4px solid #F59E0B;">
+            <div class="kpi-rich-card kpi-bar-orange">
                 <div class="kpi-rich-title">🟤 ダートレース実績 <span style="color:#F59E0B; font-weight:600;">(実データ連動)</span></div>
                 <div class="kpi-main-metrics">
                     <div>
@@ -688,7 +693,7 @@ if menu == "📊 ダッシュボード":
             usr_profit_class = "kpi-profit-pos" if usr_profit >= 0 else "kpi-profit-neg"
             usr_profit_sign = "+" if usr_profit > 0 else ""
             st.markdown(f"""
-            <div class="kpi-rich-card" style="border-left: 4px solid #10B981;">
+            <div class="kpi-rich-card kpi-bar-green">
                 <div class="kpi-rich-title">👤 実投票 実績 <span style="color:#10B981; font-weight:600;">(日次収支シート連動)</span></div>
                 <div class="kpi-main-metrics">
                     <div>
@@ -708,7 +713,7 @@ if menu == "📊 ダッシュボード":
             """, unsafe_allow_html=True)
         else:
             st.markdown("""
-            <div class="kpi-rich-card" style="border-left: 4px solid #10B981;">
+            <div class="kpi-rich-card kpi-bar-green">
                 <div class="kpi-rich-title">👤 実投票 実績 <span style="color:#10B981; font-weight:600;">(日次収支シート連動)</span></div>
                 <div class="kpi-main-metrics">
                     <div>
