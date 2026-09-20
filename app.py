@@ -492,7 +492,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 🚀 画面 1: 📊 ダッシュボード
+# 🚀 画面 1: 📊 ダッシュボード（完全維持）
 # ==========================================
 if menu == "📊 ダッシュボード":
     col_h_left, col_h_right = st.columns([7, 3])
@@ -741,7 +741,9 @@ if menu == "📊 ダッシュボード":
 
     st.write("")
 
-    # 回収率推移グラフ
+    # ==========================================
+    # 📈 回収率推移グラフ（🌟 枠外飛び出し防止・自動スケール化）
+    # ==========================================
     col_chart_title, col_chart_select = st.columns([6, 4])
     with col_chart_title:
         st.markdown('<div style="font-size:1.1rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">回収率推移</div>', unsafe_allow_html=True)
@@ -753,6 +755,8 @@ if menu == "📊 ダッシュボード":
         )
 
     fig = go.Figure()
+    max_plot_val = 110.0  # デフォルトの上限
+
     if (has_real_ai or has_real_usr) and df_daily_log is not None and not df_daily_log.empty:
         df_plot = df_daily_calc.copy()
         df_plot['日付_dt'] = pd.to_datetime(df_plot['日付'], errors='coerce')
@@ -778,6 +782,7 @@ if menu == "📊 ダッシュボード":
                 sub_df['AI_CUM_I'] = sub_df[ai_inv_col].cumsum()
                 sub_df['AI_CUM_R'] = sub_df[ai_ret_col].cumsum()
                 ai_vals = np.where(sub_df['AI_CUM_I'] > 0, (sub_df['AI_CUM_R'] / sub_df['AI_CUM_I']) * 100, 0.0)
+                max_plot_val = max(max_plot_val, float(np.max(ai_vals)))
                 fig.add_trace(go.Scatter(
                     x=x_vals, y=ai_vals,
                     name="AI理論 (実績)",
@@ -791,6 +796,7 @@ if menu == "📊 ダッシュボード":
                 sub_df['USR_CUM_I'] = sub_df[usr_inv_col].cumsum()
                 sub_df['USR_CUM_R'] = sub_df[usr_ret_col].cumsum()
                 usr_vals = np.where(sub_df['USR_CUM_I'] > 0, (sub_df['USR_CUM_R'] / sub_df['USR_CUM_I']) * 100, 0.0)
+                max_plot_val = max(max_plot_val, float(np.max(usr_vals)))
                 fig.add_trace(go.Scatter(
                     x=x_vals, y=usr_vals,
                     name="あなたの実戦",
@@ -819,6 +825,9 @@ if menu == "📊 ダッシュボード":
         annotation_font_color="#94A3B8"
     )
 
+    # 🌟 上限を自動計算（最大値 + 15%の余白を持たせて綺麗に収める）
+    y_max = max(120.0, max_plot_val * 1.15)
+
     fig.update_layout(
         height=300,
         margin=dict(l=5, r=5, t=15, b=10),
@@ -827,13 +836,13 @@ if menu == "📊 ダッシュボード":
         font=dict(color="#94A3B8", size=11),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=11, color="#CBD5E1")),
         xaxis=dict(showgrid=True, gridcolor="#1E273D", zeroline=False),
-        yaxis=dict(showgrid=True, gridcolor="#1E273D", zeroline=True, zerolinecolor="#334155", ticksuffix="%", range=[-8, 115]),
+        yaxis=dict(showgrid=True, gridcolor="#1E273D", zeroline=True, zerolinecolor="#334155", ticksuffix="%", range=[-8, y_max]),
         hovermode="x unified"
     )
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
 # ==========================================
-# 🎯 画面 2: 厳選勝負レース（朝のrun.py結果をそのまま確実に表示）
+# 🎯 画面 2: 厳選勝負レース
 # ==========================================
 elif menu == "🎯 厳選勝負レース":
     st.markdown('<div class="main-title">本日の厳選勝負レース</div>', unsafe_allow_html=True)
@@ -882,13 +891,12 @@ elif menu == "🎯 厳選勝負レース":
         st.info("スプレッドシートに最新の勝負レースデータがありません。")
 
 # ==========================================
-# 🏇 画面 3: 全レース出馬表（🌟 天候切り替えボタンを常時表示）
+# 🏇 画面 3: 全レース出馬表
 # ==========================================
 elif menu == "🏇 全レース出馬表":
     st.markdown('<div class="main-title">全レース出馬表 ＆ AI評価印</div>', unsafe_allow_html=True)
     st.markdown('<div class="last-update">馬場状態を切り替えて、レースの買い/見送り判定と各頭の印をシミュレーションできます</div>', unsafe_allow_html=True)
 
-    # 🌟 ボタンをタブの真上に常時表示
     st.markdown('<div style="font-size:0.95rem; font-weight:700; color:#FFFFFF; margin-bottom:6px;">⛅ 馬場状態の切り替えシミュレーション</div>', unsafe_allow_html=True)
     sel_baba = st.radio("", ["☀️ 良", "⛅ 稍重", "☂️ 重", "🌀 不良"], horizontal=True, label_visibility="collapsed")
     st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
@@ -1065,7 +1073,7 @@ elif menu == "💰 収支入力・管理":
                 st.error("🚨 スプレッドシートの認証に失敗しました。")
 
 # ==========================================
-# 💻 画面 5: ターミナル操作マニュアル（🌟 1〜6番まで完全復元）
+# 💻 画面 5: ターミナル操作マニュアル
 # ==========================================
 elif menu == "💻 ターミナル操作マニュアル":
     st.markdown('<div class="main-title">ターミナル操作マニュアル</div>', unsafe_allow_html=True)
