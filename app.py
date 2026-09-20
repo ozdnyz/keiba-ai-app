@@ -76,10 +76,10 @@ st.markdown("""
         color: #FFFFFF !important;
     }
 
-    /* 🌟 メイン画面の天候シナリオ切り替えボタン（文字をクッキリ純白・見やすく改善） */
+    /* 🌟 出馬表画面の天候切り替えボタン（文字をクッキリ純白・見やすくボタン化） */
     div[data-testid="stRadio"] div[role="radiogroup"] label {
         background-color: #141A29 !important;
-        border: 1px solid #1E273D !important;
+        border: 1px solid #2B354F !important;
         border-radius: 8px !important;
         padding: 6px 14px !important;
         margin-right: 8px !important;
@@ -92,11 +92,11 @@ st.markdown("""
     div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
         background-color: #1E2238 !important;
         border-color: #6366F1 !important;
-        box-shadow: 0 0 10px rgba(99, 102, 241, 0.3) !important;
+        box-shadow: 0 0 10px rgba(99, 102, 241, 0.4) !important;
     }
     div[data-testid="stRadio"] div[role="radiogroup"] label p {
-        color: #FFFFFF !important; /* クッキリ純白 */
-        font-size: 0.95rem !important;
+        color: #FFFFFF !important;
+        font-size: 0.92rem !important;
         font-weight: 700 !important;
     }
 
@@ -329,6 +329,30 @@ st.markdown("""
         border: 1px solid #6366F1;
     }
 
+    /* レース判定バッジ */
+    .status-badge-buy {
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid #10B981;
+        color: #10B981;
+        font-size: 0.88rem;
+        font-weight: 700;
+        padding: 6px 12px;
+        border-radius: 6px;
+        display: inline-block;
+        margin-bottom: 10px;
+    }
+    .status-badge-skip {
+        background: rgba(148, 163, 184, 0.12);
+        border: 1px solid #475569;
+        color: #CBD5E1;
+        font-size: 0.88rem;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 6px;
+        display: inline-block;
+        margin-bottom: 10px;
+    }
+
     @media screen and (max-width: 768px) {
         .main-title { font-size: 1.35rem !important; margin-bottom: 2px !important; }
         .last-update { font-size: 0.75rem !important; margin-bottom: 0.8rem !important; }
@@ -382,7 +406,7 @@ def load_sheet_data():
                     if not r or "--- 見送り" in r[0]:
                         break
                     target_rows.append(r)
-                df_target = pd.DataFrame(target_rows, columns=headers)
+                df_target = pd.DataFrame(target_rows, columns=headers[:len(target_rows[0])])
             else:
                 df_target = pd.DataFrame()
         except:
@@ -469,7 +493,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 🚀 画面 1: 📊 ダッシュボード
+# 🚀 画面 1: 📊 ダッシュボード（完全維持）
 # ==========================================
 if menu == "📊 ダッシュボード":
     col_h_left, col_h_right = st.columns([7, 3])
@@ -491,9 +515,6 @@ if menu == "📊 ダッシュボード":
                 st.cache_data.clear()
                 st.rerun()
 
-    # ==========================================
-    # 📊 実データ集計ロジック（スプレッドシート完全連動）
-    # ==========================================
     has_real_ai = False
     has_real_usr = False
 
@@ -580,18 +601,14 @@ if menu == "📊 ダッシュボード":
         df_today_latest = df_today[df_today['日付'] == latest_date_str]
         today_race_count = len(df_today_latest['レース名'].unique())
     
-    # 馬連3点買い（1R=300円）
     today_investment = today_target_count * 300
 
-    # ==========================================
-    # 🌟 メインKPIカード（左右完全水平整列 ＆ 枠のすぐ上見出し）
-    # ==========================================
+    # 左右KPIカード
     c1, c2 = st.columns(2)
 
     with c1:
         tab_all, tab_turf, tab_dirt = st.tabs(["🌐 総合", "🟢 芝", "🟤 ダート"])
 
-        # 1. 総合
         with tab_all:
             ai_all_profit = ai_all_ret - ai_all_inv
             p_class = "kpi-profit-pos" if ai_all_profit >= 0 else "kpi-profit-neg"
@@ -616,7 +633,6 @@ if menu == "📊 ダッシュボード":
             </div>
             """, unsafe_allow_html=True)
 
-        # 2. 芝
         with tab_turf:
             ai_turf_profit = ai_turf_ret - ai_turf_inv
             p_class = "kpi-profit-pos" if ai_turf_profit >= 0 else "kpi-profit-neg"
@@ -641,7 +657,6 @@ if menu == "📊 ダッシュボード":
             </div>
             """, unsafe_allow_html=True)
 
-        # 3. ダート
         with tab_dirt:
             ai_dirt_profit = ai_dirt_ret - ai_dirt_inv
             p_class = "kpi-profit-pos" if ai_dirt_profit >= 0 else "kpi-profit-neg"
@@ -713,7 +728,6 @@ if menu == "📊 ダッシュボード":
             </div>
             """, unsafe_allow_html=True)
 
-    # サブカード
     c3, c4 = st.columns(2)
     with c3:
         st.markdown(f"""
@@ -733,9 +747,7 @@ if menu == "📊 ダッシュボード":
 
     st.write("")
 
-    # ==========================================
-    # 📈 回収率推移グラフ（0%の緑の点もしっかり描画）
-    # ==========================================
+    # 回収率推移グラフ
     col_chart_title, col_chart_select = st.columns([6, 4])
     with col_chart_title:
         st.markdown('<div style="font-size:1.1rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">回収率推移</div>', unsafe_allow_html=True)
@@ -827,7 +839,7 @@ if menu == "📊 ダッシュボード":
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
 # ==========================================
-# 🎯 画面 2: 厳選勝負レース（🌟 空欄でも全件復元 ＆ 文字を純白化）
+# 🎯 画面 2: 厳選勝負レース（🌟 朝のrun.py結果をそのまま確実に表示）
 # ==========================================
 elif menu == "🎯 厳選勝負レース":
     st.markdown('<div class="main-title">本日の厳選勝負レース</div>', unsafe_allow_html=True)
@@ -837,83 +849,67 @@ elif menu == "🎯 厳選勝負レース":
         latest_date_str = df_target['日付'].max()
         df_target_latest = df_target[df_target['日付'] == latest_date_str]
         
-        # 🌟 馬場想定データが存在するか判定
-        has_baba_data = False
-        if '馬場想定' in df_target_latest.columns:
-            has_baba_data = (df_target_latest['馬場想定'].astype(str).str.strip() != '').any()
-            
-        if has_baba_data:
-            st.markdown('<div style="font-size:0.95rem; font-weight:700; color:#FFFFFF; margin-bottom:8px;">⛅ 確認したい天候シナリオ</div>', unsafe_allow_html=True)
-            sel_baba = st.radio("", ["📢 公式発表 (推奨)", "☀️ 良", "⛅ 稍重", "☂️ 重", "🌀 不良", "📋 すべて表示"], horizontal=True, label_visibility="collapsed")
-            st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
-            
-            if sel_baba == "📢 公式発表 (推奨)":
-                filtered = df_target_latest[df_target_latest['馬場想定'].str.contains("公式発表", na=False)]
-                if not filtered.empty:
-                    df_target_latest = filtered
-            elif sel_baba == "📋 すべて表示":
-                pass
-            else:
-                b_kw = sel_baba.replace("☀️ ", "").replace("⛅ ", "").replace("☂️ ", "").replace("🌀 ", "")
-                filtered = df_target_latest[df_target_latest['馬場想定'].str.contains(f"【想定】{b_kw}", na=False)]
-                if not filtered.empty:
-                    df_target_latest = filtered
-                else:
-                    df_target_latest = pd.DataFrame()
+        unique_races = df_target_latest[['日付', '競馬場', 'レース名', '条件', '軸馬 (◎)']].drop_duplicates()
         
-        unique_races = df_target_latest[['日付', '競馬場', 'レース名', '条件', '軸馬 (◎)']].drop_duplicates() if not df_target_latest.empty else pd.DataFrame()
-        
-        if unique_races.empty:
-            st.info("この馬場状態での勝負レースはありません（見送り推奨）。")
-        else:
-            for _, r in unique_races.iterrows():
-                sub_df = df_target_latest[(df_target_latest['競馬場'] == r['競馬場']) & (df_target_latest['レース名'] == r['レース名'])]
-                
-                st.markdown(f"""
-                <div class="race-card">
-                    <div class="race-header">
-                        <span class="race-name">📍 [{r['競馬場']}] {r['レース名']} ({r['条件']})</span>
-                        <span class="race-badge">黄金条件合致</span>
+        for _, r in unique_races.iterrows():
+            sub_df = df_target_latest[(df_target_latest['競馬場'] == r['競馬場']) & (df_target_latest['レース名'] == r['レース名'])]
+            
+            st.markdown(f"""
+            <div class="race-card">
+                <div class="race-header">
+                    <span class="race-name">📍 [{r['競馬場']}] {r['レース名']} ({r['条件']})</span>
+                    <span class="race-badge">黄金条件合致</span>
+                </div>
+                <div style="font-size: 0.95rem; color: #E2E8F0; margin-bottom: 0.8rem;">
+                    🎯 <b>軸馬 (◎)</b> : <span style="color: #6366F1; font-weight:700;">{r['軸馬 (◎)']}</span>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            num_bets = min(len(sub_df), 3)
+            cols = st.columns(num_bets)
+            bet_meta = [
+                ("点① 本線・抑え", "#3B82F6"),
+                ("点② 相手本線", "#10B981"),
+                ("点③ 利益の核（△1）", "#F59E0B")
+            ]
+            for b_i in range(num_bets):
+                with cols[b_i]:
+                    row_b = sub_df.iloc[b_i]
+                    b_title, b_color = bet_meta[b_i]
+                    st.markdown(f"""
+                    <div style="background:#1B2338; padding:10px 12px; border-radius:8px; border-left:3px solid {b_color}; margin-bottom:6px;">
+                        <span style="color:#94A3B8; font-size:0.8rem;">{b_title}</span><br>
+                        <b style="font-size:1.05rem; color:#FFFFFF;">馬連 {row_b['買い目']}</b><br>
+                        <span style="font-size:0.82rem; color:#CBD5E1;">相手: {row_b['相手馬']} ｜ 想定: {row_b['想定オッズ']}</span>
                     </div>
-                    <div style="font-size: 0.95rem; color: #E2E8F0; margin-bottom: 0.8rem;">
-                        🎯 <b>軸馬 (◎)</b> : <span style="color: #6366F1; font-weight:700;">{r['軸馬 (◎)']}</span>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-                num_bets = min(len(sub_df), 3)
-                cols = st.columns(num_bets)
-                bet_meta = [
-                    ("点① 本線・抑え", "#3B82F6"),
-                    ("点② 相手本線", "#10B981"),
-                    ("点③ 利益の核（△1）", "#F59E0B")
-                ]
-                for b_i in range(num_bets):
-                    with cols[b_i]:
-                        row_b = sub_df.iloc[b_i]
-                        b_title, b_color = bet_meta[b_i]
-                        st.markdown(f"""
-                        <div style="background:#1B2338; padding:10px 12px; border-radius:8px; border-left:3px solid {b_color}; margin-bottom:6px;">
-                            <span style="color:#94A3B8; font-size:0.8rem;">{b_title}</span><br>
-                            <b style="font-size:1.05rem; color:#FFFFFF;">馬連 {row_b['買い目']}</b><br>
-                            <span style="font-size:0.82rem; color:#CBD5E1;">相手: {row_b['相手馬']} ｜ 想定: {row_b['想定オッズ']}</span>
-                        </div>
-                        """, unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("スプレッドシートに最新の勝負レースデータがありません。")
 
 # ==========================================
-# 🏇 画面 3: 全レース出馬表
+# 🏇 画面 3: 全レース出馬表（🌟 天候シナリオ切り替え＆判定表示）
 # ==========================================
 elif menu == "🏇 全レース出馬表":
     st.markdown('<div class="main-title">全レース出馬表 ＆ AI評価印</div>', unsafe_allow_html=True)
-    st.markdown('<div class="last-update">全頭のAIスコアと評価印（◎◯▲△）を一覧表示します</div>', unsafe_allow_html=True)
+    st.markdown('<div class="last-update">馬場状態を切り替えて、レースの買い/見送り判定と各頭の印をシミュレーションできます</div>', unsafe_allow_html=True)
 
     if df_today is not None and not df_today.empty and '日付' in df_today.columns:
         latest_date_str = df_today['日付'].max()
         df_today_latest = df_today[df_today['日付'] == latest_date_str]
         
-        venues = df_today_latest['会場'].unique()
+        # 🌟 馬場切り替えボタンを設置（見やすい純白テキスト仕様）
+        has_baba_col = '馬場' in df_today_latest.columns
+        if has_baba_col:
+            st.markdown('<div style="font-size:0.95rem; font-weight:700; color:#FFFFFF; margin-bottom:6px;">⛅ 馬場状態の切り替えシミュレーション</div>', unsafe_allow_html=True)
+            sel_baba = st.radio("", ["☀️ 良", "⛅ 稍重", "☂️ 重", "🌀 不良"], horizontal=True, label_visibility="collapsed")
+            st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
+            b_val = sel_baba.replace("☀️ ", "").replace("⛅ ", "").replace("☂️ ", "").replace("🌀 ", "")
+            df_today_disp = df_today_latest[df_today_latest['馬場'] == b_val]
+        else:
+            df_today_disp = df_today_latest
+
+        venues = df_today_disp['会場'].unique()
         tabs = st.tabs([f"📍 {v}" for v in venues])
         
         def extract_r_num(x):
@@ -922,7 +918,7 @@ elif menu == "🏇 全レース出馬表":
 
         for i, venue in enumerate(venues):
             with tabs[i]:
-                venue_df = df_today_latest[df_today_latest['会場'] == venue]
+                venue_df = df_today_disp[df_today_disp['会場'] == venue]
                 race_names = sorted(venue_df['レース名'].unique(), key=extract_r_num)
                 
                 for rname in race_names:
@@ -930,6 +926,15 @@ elif menu == "🏇 全レース出馬表":
                     cond = str(sub_df.iloc[0]['芝・ダ・障']) + str(sub_df.iloc[0]['距離']) + "m"
                     
                     with st.expander(f"🏁 {venue} {rname} （{cond}）"):
+                        # 🌟 レース全体のAI判定（買い or 見送り）を表示
+                        if 'レース判定' in sub_df.columns:
+                            r_judge = str(sub_df.iloc[0]['レース判定'])
+                            r_detail = str(sub_df.iloc[0].get('レース判定詳細', ''))
+                            if '買い' in r_judge:
+                                st.markdown(f'<div class="status-badge-buy">🎯 {r_judge} ｜ {r_detail}</div>', unsafe_allow_html=True)
+                            else:
+                                st.markdown(f'<div class="status-badge-skip">✋ {r_judge} ｜ 理由: {r_detail}</div>', unsafe_allow_html=True)
+
                         disp_cols = ['馬番', '印', '馬名', '単勝オッズ', '人気', 'RL', 'CL', 'AIスコア', 'AI判定']
                         if '評価' in sub_df.columns:
                             sub_df = sub_df.rename(columns={'評価': '印'})
@@ -980,7 +985,7 @@ elif menu == "🏇 全レース出馬表":
         st.info("スプレッドシートに最新の全頭データがありません。")
 
 # ==========================================
-# 💰 画面 4: 収支入力・管理
+# 💰 画面 4: 収支入力・管理（完全維持）
 # ==========================================
 elif menu == "💰 収支入力・管理":
     st.markdown('<div class="main-title">日次実収支の記録</div>', unsafe_allow_html=True)
@@ -1067,7 +1072,7 @@ elif menu == "💰 収支入力・管理":
                 st.error("🚨 スプレッドシートの認証に失敗しました。")
 
 # ==========================================
-# 💻 画面 5: ターミナル操作マニュアル
+# 💻 画面 5: ターミナル操作マニュアル（完全維持）
 # ==========================================
 elif menu == "💻 ターミナル操作マニュアル":
     st.markdown('<div class="main-title">ターミナル操作マニュアル</div>', unsafe_allow_html=True)
@@ -1128,7 +1133,7 @@ elif menu == "💻 ターミナル操作マニュアル":
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
-# 🗄️ 過去データ分析（確定黄金条件 2022〜2026年 5年検証版テーブル）
+# 🗄️ 過去データ分析（完全維持）
 # ==========================================
 elif menu == "🗄️ 過去データ分析":
     st.markdown('<div class="main-title">過去データバックテスト分析（2022〜2026年）</div>', unsafe_allow_html=True)
@@ -1143,7 +1148,7 @@ elif menu == "🗄️ 過去データ分析":
     """)
 
 # ==========================================
-# 📈 スプレッドシート連携
+# 📈 スプレッドシート連携（完全維持）
 # ==========================================
 elif menu == "📈 スプレッドシート連携":
     st.markdown('<div class="main-title">Google スプレッドシート連携ステータス</div>', unsafe_allow_html=True)
