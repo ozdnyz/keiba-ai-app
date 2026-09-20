@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 カスタムCSS（左右カード完全水平・枠デザイン完全一致）
+# 🎨 カスタムCSS（🌟 以前のデザインを完全復元）
 # ==========================================
 st.markdown("""
 <style>
@@ -76,7 +76,7 @@ st.markdown("""
         color: #FFFFFF !important;
     }
 
-    /* 🌟 出馬表画面の天候切り替えボタン（文字をクッキリ純白・見やすくボタン化） */
+    /* 🌟 出馬表画面の天候切り替えボタン */
     div[data-testid="stRadio"] div[role="radiogroup"] label {
         background-color: #141A29 !important;
         border: 1px solid #2B354F !important;
@@ -100,7 +100,7 @@ st.markdown("""
         font-weight: 700 !important;
     }
 
-    /* 🌟 タブデザイン（高コントラスト・文字がクッキリ見える純白仕様） */
+    /* 🌟 タブデザイン（下線を消して元の高コントラスト角丸ボタンスタイルに完全復元） */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px !important;
         background-color: transparent !important;
@@ -131,6 +131,10 @@ st.markdown("""
         border-color: #6366F1 !important;
         color: #FFFFFF !important;
         box-shadow: 0 0 10px rgba(99, 102, 241, 0.4) !important;
+    }
+    .stTabs [data-baseweb="tab-highlight"],
+    .stTabs [data-baseweb="tab-border"] {
+        display: none !important;
     }
     .stTabs [data-baseweb="tab-panel"] {
         padding: 0px !important;
@@ -253,20 +257,20 @@ st.markdown("""
         padding: 1.4rem !important;
     }
 
-    /* 🌟 リッチKPIカード（高さ165px完全固定・上下配置・元の枠質感を完全維持） */
+    /* 🌟 リッチKPIカード（左端カラーバーが消えないよう以前の指定へ完全復元） */
     .kpi-rich-card {
-        background: #141A29 !important;
-        border: 1px solid #1E273D !important;
-        border-radius: 14px !important;
-        padding: 1.1rem 1.25rem !important;
-        margin-bottom: 0.8rem !important;
+        background: #141A29;
+        border: 1px solid #1E273D;
+        border-radius: 14px;
+        padding: 1.1rem 1.25rem;
+        margin-bottom: 0.8rem;
         height: 165px !important;
         min-height: 165px !important;
         max-height: 165px !important;
         box-sizing: border-box !important;
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: space-between !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
     .kpi-rich-title {
         font-size: 0.88rem;
@@ -492,7 +496,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 🚀 画面 1: 📊 ダッシュボード（🌟 レース数集計を会場＋レース名で完全修正）
+# 🚀 画面 1: 📊 ダッシュボード
 # ==========================================
 if menu == "📊 ダッシュボード":
     col_h_left, col_h_right = st.columns([7, 3])
@@ -590,7 +594,6 @@ if menu == "📊 ダッシュボード":
         df_target_latest = df_target[df_target['日付'] == latest_date_str]
         today_target_count = len(df_target_latest[['競馬場', 'レース名']].drop_duplicates())
 
-    # 🌟【重要修正】「会場」＋「レース名」のセットでユニーク判定し、同名レースの重複合算を防止！
     if df_today is not None and not df_today.empty and '日付' in df_today.columns:
         if not latest_date_str:
             latest_date_str = df_today['日付'].max()
@@ -603,17 +606,21 @@ if menu == "📊 ダッシュボード":
     
     today_investment = today_target_count * 300
 
+    # ==========================================
+    # 🌟 メインKPIカード（左端カラーバーを完全維持・復元）
+    # ==========================================
     c1, c2 = st.columns(2)
 
     with c1:
         tab_all, tab_turf, tab_dirt = st.tabs(["🌐 総合", "🟢 芝", "🟤 ダート"])
 
+        # 1. 総合
         with tab_all:
             ai_all_profit = ai_all_ret - ai_all_inv
             p_class = "kpi-profit-pos" if ai_all_profit >= 0 else "kpi-profit-neg"
             p_sign = "+" if ai_all_profit > 0 else ""
             st.markdown(f"""
-            <div class="kpi-rich-card" style="border-left: 4px solid #6366F1;">
+            <div class="kpi-rich-card" style="border-left: 4px solid #6366F1 !important;">
                 <div class="kpi-rich-title">🌐 AI理論 総合実績 <span style="color:#6366F1; font-weight:600;">(実データ連動)</span></div>
                 <div class="kpi-main-metrics">
                     <div>
@@ -632,12 +639,13 @@ if menu == "📊 ダッシュボード":
             </div>
             """, unsafe_allow_html=True)
 
+        # 2. 芝
         with tab_turf:
             ai_turf_profit = ai_turf_ret - ai_turf_inv
             p_class = "kpi-profit-pos" if ai_turf_profit >= 0 else "kpi-profit-neg"
             p_sign = "+" if ai_turf_profit > 0 else ""
             st.markdown(f"""
-            <div class="kpi-rich-card" style="border-left: 4px solid #10B981;">
+            <div class="kpi-rich-card" style="border-left: 4px solid #10B981 !important;">
                 <div class="kpi-rich-title">🟢 芝レース実績 <span style="color:#10B981; font-weight:600;">(実データ連動)</span></div>
                 <div class="kpi-main-metrics">
                     <div>
@@ -656,12 +664,13 @@ if menu == "📊 ダッシュボード":
             </div>
             """, unsafe_allow_html=True)
 
+        # 3. ダート
         with tab_dirt:
             ai_dirt_profit = ai_dirt_ret - ai_dirt_inv
             p_class = "kpi-profit-pos" if ai_dirt_profit >= 0 else "kpi-profit-neg"
             p_sign = "+" if ai_dirt_profit > 0 else ""
             st.markdown(f"""
-            <div class="kpi-rich-card" style="border-left: 4px solid #F59E0B;">
+            <div class="kpi-rich-card" style="border-left: 4px solid #F59E0B !important;">
                 <div class="kpi-rich-title">🟤 ダートレース実績 <span style="color:#F59E0B; font-weight:600;">(実データ連動)</span></div>
                 <div class="kpi-main-metrics">
                     <div>
@@ -681,6 +690,7 @@ if menu == "📊 ダッシュボード":
             """, unsafe_allow_html=True)
 
     with c2:
+        # 🌟 あなたの実戦（画像2の通り、左端に鮮やかなエメラルドグリーンのバーを完全復元）
         st.markdown('<div class="right-card-header">👤 あなたの実戦 通算成績 (実投票)</div>', unsafe_allow_html=True)
 
         if has_real_usr and (usr_tot_inv > 0 or usr_tot_races > 0):
@@ -688,7 +698,7 @@ if menu == "📊 ダッシュボード":
             usr_profit_class = "kpi-profit-pos" if usr_profit >= 0 else "kpi-profit-neg"
             usr_profit_sign = "+" if usr_profit > 0 else ""
             st.markdown(f"""
-            <div class="kpi-rich-card" style="border-left: 4px solid #10B981;">
+            <div class="kpi-rich-card" style="border-left: 4px solid #10B981 !important;">
                 <div class="kpi-rich-title">👤 実投票 実績 <span style="color:#10B981; font-weight:600;">(日次収支シート連動)</span></div>
                 <div class="kpi-main-metrics">
                     <div>
@@ -708,7 +718,7 @@ if menu == "📊 ダッシュボード":
             """, unsafe_allow_html=True)
         else:
             st.markdown("""
-            <div class="kpi-rich-card" style="border-left: 4px solid #10B981;">
+            <div class="kpi-rich-card" style="border-left: 4px solid #10B981 !important;">
                 <div class="kpi-rich-title">👤 実投票 実績 <span style="color:#10B981; font-weight:600;">(日次収支シート連動)</span></div>
                 <div class="kpi-main-metrics">
                     <div>
@@ -746,7 +756,7 @@ if menu == "📊 ダッシュボード":
 
     st.write("")
 
-    # 回収率推移グラフ（上限自動計算）
+    # 回収率推移グラフ
     col_chart_title, col_chart_select = st.columns([6, 4])
     with col_chart_title:
         st.markdown('<div style="font-size:1.1rem; font-weight:700; color:#FFFFFF; margin-bottom:4px;">回収率推移</div>', unsafe_allow_html=True)
