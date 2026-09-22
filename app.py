@@ -1,3 +1,4 @@
+cat << 'EOF' > ~/app.py
 from datetime import datetime
 import json
 import os
@@ -337,6 +338,15 @@ st.markdown(
         border-radius: 4px;
         border: 1px solid #6366F1;
     }
+    .race-badge-g1 {
+        background-color: #312E81 !important;
+        color: #A5B4FC !important;
+        font-size: 0.78rem !important;
+        font-weight: 700 !important;
+        padding: 3px 10px !important;
+        border-radius: 6px !important;
+        border: 1px solid #6366F1 !important;
+    }
 
     .status-badge-buy {
         background: rgba(16, 185, 129, 0.15);
@@ -466,7 +476,7 @@ def show_flow_modal():
     <div style="background:#141A29; border:1px solid #2B354F; border-left:5px solid #6366F1; border-radius:10px; padding:14px 16px; margin-bottom:12px;">
         <div style="font-size:1.05rem; font-weight:700; color:#FFFFFF; margin-bottom:8px;">🌅 1. 【朝 9:00】 予測・出撃フェーズ（run.py）</div>
         <div style="font-size:0.9rem; color:#F3F4F6; line-height:1.7;">
-            <span style="color:#818CF8; font-weight:700;">・処理</span>: 全レース自動巡回 ➔ 芝・ダート黄金条件合致レースを抽出（👑 ハイブリッド計8点）<br>
+            <span style="color:#818CF8; font-weight:700;">・処理</span>: 全レース自動巡回 ➔ 芝・ダート黄金条件合致レースを抽出（👑 G1特化 / 平場ハイブリッド）<br>
             <span style="color:#818CF8; font-weight:700;">・反映先</span>: 「本日」「本日勝負レース」シート（作業用キャッシュ）<br>
             <span style="color:#818CF8; font-weight:700;">・操作</span>: スマホで「🎯 厳選勝負レース」を確認して馬券購入
         </div>
@@ -474,7 +484,7 @@ def show_flow_modal():
     <div style="background:#141A29; border:1px solid #2B354F; border-left:5px solid #10B981; border-radius:10px; padding:14px 16px; margin-bottom:12px;">
         <div style="font-size:1.05rem; font-weight:700; color:#FFFFFF; margin-bottom:8px;">🌆 2. 【夕方 17:00】 収支確定フェーズ（result.py）</div>
         <div style="font-size:0.9rem; color:#F3F4F6; line-height:1.7;">
-            <span style="color:#34D399; font-weight:700;">・処理</span>: 確定着順と配当を自動回収 ➔ AI買い目（計800円）と照合<br>
+            <span style="color:#34D399; font-weight:700;">・処理</span>: 確定着順と配当を自動回収 ➔ AI買い目と照合<br>
             <span style="color:#34D399; font-weight:700;">・反映先</span>: 「日次収支」シート（1日1行）<br>
             <span style="color:#34D399; font-weight:700;">・操作</span>: 左メニュー「💰 収支入力・管理」から今日の総購入額と総払戻額を保存
         </div>
@@ -705,8 +715,11 @@ if menu == "📊 ダッシュボード":
         else:
             today_race_count = len(df_today_latest["レース名"].unique())
 
-    # 🌟 ハイブリッド投資（ワイド5点＋馬単3点＝計800円）に対応
-    today_investment = today_target_count * 800
+    # 🌟 G1特化（300〜600円）および平場ハイブリッド（800円）の可変投資額を自動合算
+    if df_target is not None and not df_target.empty and "日付" in df_target.columns and "推奨金額(円)" in df_target_latest.columns:
+        today_investment = pd.to_numeric(df_target_latest["推奨金額(円)"], errors="coerce").fillna(0).astype(int).sum()
+    else:
+        today_investment = today_target_count * 800
 
     c1, c2 = st.columns(2)
 
@@ -869,7 +882,7 @@ if menu == "📊 ダッシュボード":
         st.markdown(
             f"""
             <div style="background:#141A29; border:1px solid #1E273D; border-radius:10px; padding:0.9rem 1.1rem; margin-bottom:0.6rem;">
-                <div style="font-size:0.82rem; color:#CBD5E1;">💸 最新日 推奨投資額 (計800円)</div>
+                <div style="font-size:0.82rem; color:#CBD5E1;">💸 最新日 推奨投資総額</div>
                 <div style="font-size:1.4rem; font-weight:700; color:#FFFFFF;">{today_investment:,} <span style="font-size:0.85rem; color:#94A3B8; font-weight:400;">円</span></div>
             </div>
             """,
@@ -1194,7 +1207,7 @@ if menu == "📊 ダッシュボード":
     )
 
 # ==========================================
-# 🎯 画面 2: 厳選勝負レース（ハイブリッド＆全券種対応＋詳細アコーディオン付き）
+# 🎯 画面 2: 厳選勝負レース（ハイブリッド＆G1特化両立＋詳細アコーディオン付き）
 # ==========================================
 elif menu == "🎯 厳選勝負レース":
     st.markdown(
@@ -1224,49 +1237,56 @@ elif menu == "🎯 厳選勝負レース":
                 & (df_target_latest["レース名"] == r["レース名"])
             ]
 
+            judge_str = str(sub_df["判断"].iloc[0]) if "判断" in sub_df.columns and len(sub_df) > 0 else ""
+            is_g1_race = "G1" in judge_str or "Ｇ１" in str(r["レース名"]) or "GI" in str(r["レース名"])
+            badge_html = '<span class="race-badge-g1">👑 G1特化勝負</span>' if is_g1_race else '<span class="race-badge">👑 勝負レース</span>'
+
             st.markdown(
                 f"""
                 <div class="race-card">
                     <div class="race-header">
                         <span class="race-name">📍 [{r['競馬場']}] {r['レース名']} ({r['条件']})</span>
-                        <span class="race-badge">👑 勝負レース</span>
+                        {badge_html}
                     </div>
                     <div style="font-size: 0.95rem; color: #E2E8F0; margin-bottom: 0.8rem;">
-                        🎯 <b>軸馬 (◎)</b> : <span style="color: #6366F1; font-weight:700;">{r['軸馬 (◎)']}</span>
+                        🎯 <b>軸馬 / 注目</b> : <span style="color: #6366F1; font-weight:700;">{r['軸馬 (◎)']}</span>
                     </div>
                 """,
                 unsafe_allow_html=True,
             )
 
-            # 券種別にワイド・馬単・その他（馬連など）を柔軟に自動振り分け
+            # 券種別にワイド・馬単・その他（単勝・複勝・馬連・BOX）を柔軟に自動振り分け
             sub_df["_kenshu"] = sub_df["券種"].astype(str).str.strip() if "券種" in sub_df.columns else ""
             df_wide = sub_df[sub_df["_kenshu"].str.contains("ワイド", na=False)]
             df_umatan = sub_df[sub_df["_kenshu"].str.contains("馬単", na=False) | sub_df["買い目"].astype(str).str.contains("➔", na=False)]
             df_other = sub_df[~sub_df.index.isin(df_wide.index) & ~sub_df.index.isin(df_umatan.index)]
 
-            # 🛡️ 【守り】ワイド
+            # 🛡️ ワイド系（平場ワイド5点 / G1ワイドBOX・穴流し）
             if not df_wide.empty:
+                w_title = "🛡️ 【G1特化】ワイド / ワイドBOX" if is_g1_race else "🛡️ 【守り】ワイド5点（各100円・計500円 / 的中率55%・最大10連敗防衛）"
                 st.markdown(
-                    '<div style="font-size:0.85rem; font-weight:700; color:#10B981; margin-bottom:6px;">🛡️ 【守り】ワイド5点（各100円・計500円 / 的中率55%・最大10連敗防衛）</div>',
+                    f'<div style="font-size:0.85rem; font-weight:700; color:#10B981; margin-bottom:6px;">{w_title}</div>',
                     unsafe_allow_html=True,
                 )
-                w_cols = st.columns(min(len(df_wide), 5))
-                for w_i, (_, row_w) in enumerate(df_wide.head(5).iterrows()):
+                w_cols = st.columns(min(len(df_wide), 6))
+                for w_i, (_, row_w) in enumerate(df_wide.head(6).iterrows()):
                     with w_cols[w_i]:
+                        k_name = row_w.get('券種', 'ワイド')
                         st.markdown(
                             f"""
                             <div style="background:#1B2338; padding:8px 10px; border-radius:8px; border-left:3px solid #10B981; margin-bottom:6px;">
-                                <b style="font-size:0.95rem; color:#FFFFFF;">ワイド {row_w['買い目']}</b><br>
+                                <b style="font-size:0.95rem; color:#FFFFFF;">{k_name} {row_w['買い目']}</b><br>
                                 <span style="font-size:0.78rem; color:#CBD5E1;">相手: {row_w.get('相手馬', '')}<br>想定: {row_w.get('想定オッズ', '')}</span>
                             </div>
                             """,
                             unsafe_allow_html=True,
                         )
 
-            # 🚀 【攻め】馬単
+            # 🚀 馬単系（平場馬単3点 / G1馬単3点）
             if not df_umatan.empty:
+                u_title = "🚀 【G1特化】馬単1着固定3点（回収爆発型）" if is_g1_race else "🚀 【攻め】馬単1着固定3点（各100円・計300円 / 回収率133%ゾーン直撃）"
                 st.markdown(
-                    '<div style="font-size:0.85rem; font-weight:700; color:#F59E0B; margin-top:6px; margin-bottom:6px;">🚀 【攻め】馬単1着固定3点（各100円・計300円 / 回収率133%ゾーン直撃）</div>',
+                    f'<div style="font-size:0.85rem; font-weight:700; color:#F59E0B; margin-top:6px; margin-bottom:6px;">{u_title}</div>',
                     unsafe_allow_html=True,
                 )
                 u_cols = st.columns(min(len(df_umatan), 3))
@@ -1282,19 +1302,21 @@ elif menu == "🎯 厳選勝負レース":
                             unsafe_allow_html=True,
                         )
 
-            # 💡 以前の馬連データ等が入っていた場合のフォールバック表示
+            # 🎯 単勝・複勝・馬連系（G1王道馬連・単複防衛など）
             if not df_other.empty:
+                o_title = "🎯 【G1特化】王道馬連 / 単勝 / 複勝" if is_g1_race else "🎯 推奨買い目一覧"
                 st.markdown(
-                    '<div style="font-size:0.85rem; font-weight:700; color:#3B82F6; margin-bottom:6px;">🎯 推奨買い目一覧</div>',
+                    f'<div style="font-size:0.85rem; font-weight:700; color:#3B82F6; margin-bottom:6px;">{o_title}</div>',
                     unsafe_allow_html=True,
                 )
-                o_cols = st.columns(min(len(df_other), 3))
-                for o_i, (_, row_o) in enumerate(df_other.head(3).iterrows()):
+                o_cols = st.columns(min(len(df_other), 5))
+                for o_i, (_, row_o) in enumerate(df_other.head(5).iterrows()):
                     with o_cols[o_i]:
-                        t_name = row_o.get("券種", "馬連")
+                        t_name = row_o.get("券種", "買い目")
+                        border_color = "#6366F1" if "単" in t_name else "#3B82F6"
                         st.markdown(
                             f"""
-                            <div style="background:#1B2338; padding:8px 10px; border-radius:8px; border-left:3px solid #3B82F6; margin-bottom:6px;">
+                            <div style="background:#1B2338; padding:8px 10px; border-radius:8px; border-left:3px solid {border_color}; margin-bottom:6px;">
                                 <b style="font-size:0.95rem; color:#FFFFFF;">{t_name} {row_o['買い目']}</b><br>
                                 <span style="font-size:0.78rem; color:#CBD5E1;">相手: {row_o.get('相手馬', '')} ｜ 想定: {row_o.get('想定オッズ', '')}</span>
                             </div>
@@ -1693,7 +1715,7 @@ elif menu == "💻 ターミナル操作マニュアル":
     st.markdown(
         """
     <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
-        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">⚡ 1. 朝の予想手動実行（全レース巡回 ＆ ハイブリッド買い目選定）</h4>
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">⚡ 1. 朝の予想手動実行（全レース巡回 ＆ 買い目自動選定）</h4>
     """,
         unsafe_allow_html=True,
     )
@@ -1714,13 +1736,13 @@ elif menu == "💻 ターミナル操作マニュアル":
         "cd /home/ozdnyzww1 && /home/ozdnyzww1/keiba_env/bin/python3 check.py 中山 11",
         language="bash",
     )
-    st.caption("※芝・ダートを自動判別し、黄金条件合致判定と推奨ハイブリッド買い目を出力")
+    st.caption("※芝・ダート・G1を自動判別し、最適化された買い目を出力")
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown(
         """
     <div style="background:#141A29; border:1px solid #1E273D; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
-        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🏁 3. 【手動結果回収】ハイブリッド的中照合 ＆ 日次収支自動集計</h4>
+        <h4 style="color:#FFFFFF; margin-top:0; font-size:1rem;">🏁 3. 【手動結果回収】的中照合 ＆ 日次収支自動集計</h4>
     """,
         unsafe_allow_html=True,
     )
@@ -1768,7 +1790,7 @@ elif menu == "💻 ターミナル操作マニュアル":
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
-# 🗄️ 過去データ分析（最新ハイブリッド実績・完全反映）
+# 🗄️ 過去データ分析（最新ハイブリッド実績 ＆ 全G1構造戦略カルテ）
 # ==========================================
 elif menu == "🗄️ 過去データ分析":
     st.markdown(
@@ -1818,6 +1840,51 @@ elif menu == "🗄️ 過去データ分析":
         unsafe_allow_html=True,
     )
 
+    st.write("")
+    st.markdown(
+        '<div style="font-size:1.15rem; font-weight:700; color:#FFFFFF;'
+        ' margin-top:1.5rem; margin-bottom:6px;">🏛️ 全24 G1レース別 構造・傾向戦略カルテ</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="last-update">前走格付け・コース枠順バイアス・波乱度別 最適券種一覧</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #1E273D;">
+        <table style="width:100%; border-collapse: collapse; color: #F3F4F6; background-color: #141A29; font-size: 0.92rem;">
+            <thead>
+                <tr style="background-color: #0E1322; color: #94A3B8; border-bottom: 2px solid #1E273D; text-align: left;">
+                    <th style="padding: 10px 12px;">分類</th>
+                    <th style="padding: 10px 12px;">レース名</th>
+                    <th style="padding: 10px 12px;">👑 採用券種</th>
+                    <th style="padding: 10px 12px;">投資点数</th>
+                    <th style="padding: 10px 12px;">構造的理由・バイアス</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom: 1px solid #1E273D;"><td rowspan="5" style="padding:10px; font-weight:700; color:#10B981;">中長距離・中穴直撃型</td><td style="padding:8px 10px;">有馬記念</td><td style="padding:8px 10px; font-weight:700;">上位4頭ワイドBOX</td><td style="padding:8px 10px;">6点 (600円)</td><td style="padding:8px 10px;">中山2500m内枠バイアス＋先行伏兵の台頭</td></tr>
+                <tr style="border-bottom: 1px solid #1E273D;"><td style="padding:8px 10px;">天皇賞(秋)</td><td style="padding:8px 10px; font-weight:700;">上位4頭ワイドBOX</td><td style="padding:8px 10px;">6点 (600円)</td><td style="padding:8px 10px;">東京2000m外枠不利。中穴馬のダブル的中狙い</td></tr>
+                <tr style="border-bottom: 1px solid #1E273D;"><td style="padding:8px 10px;">菊花賞・天皇賞(春)</td><td style="padding:8px 10px; font-weight:700;">上位4頭ワイドBOX</td><td style="padding:8px 10px;">6点 (600円)</td><td style="padding:8px 10px;">スタミナ持久戦。前走前哨戦好走馬を広く拾う</td></tr>
+                <tr style="border-bottom: 1px solid #1E273D;"><td style="padding:8px 10px;">スプリンターズS・高松宮</td><td style="padding:8px 10px; font-weight:700;">上位4頭ワイドBOX</td><td style="padding:8px 10px;">6点 (600円)</td><td style="padding:8px 10px;">電撃戦・道悪の紛れをBOXで防衛・高配当狙い</td></tr>
+                <tr style="border-bottom: 1px solid #1E273D;"><td style="padding:8px 10px;">秋華賞・宝塚・大阪杯</td><td style="padding:8px 10px; font-weight:700;">上位4頭ワイドBOX</td><td style="padding:8px 10px;">6点 (600円)</td><td style="padding:8px 10px;">内回り立ち回り巧者の激走を総取り</td></tr>
+                
+                <tr style="border-bottom: 1px solid #1E273D;"><td rowspan="4" style="padding:10px; font-weight:700; color:#3B82F6;">王道・実力決着型</td><td style="padding:8px 10px;">日本ダービー</td><td style="padding:8px 10px; font-weight:700;">馬連3点</td><td style="padding:8px 10px;">3点 (300円)</td><td style="padding:8px 10px;">軸複勝率100%。ごまかし利かない能力上位ワンツー</td></tr>
+                <tr style="border-bottom: 1px solid #1E273D;"><td style="padding:8px 10px;">オークス・ジャパンC</td><td style="padding:8px 10px; font-weight:700;">馬連3〜5点</td><td style="padding:8px 10px;">3〜5点</td><td style="padding:8px 10px;">府中芝2400mの王道決着。余計な買い目を削ぎ落とす</td></tr>
+                <tr style="border-bottom: 1px solid #1E273D;"><td style="padding:8px 10px;">フェブラリーS</td><td style="padding:8px 10px; font-weight:700;">馬単3点</td><td style="padding:8px 10px;">3点 (300円)</td><td style="padding:8px 10px;">ダート血統上位馬の一着固定押し切り</td></tr>
+                <tr style="border-bottom: 1px solid #1E273D;"><td style="padding:8px 10px;">朝日杯FS・チャンピオンズ</td><td style="padding:8px 10px; font-weight:700;">馬単3点 / 馬連5点</td><td style="padding:8px 10px;">3〜5点</td><td style="padding:8px 10px;">完成度上位・ダート実績馬の本線決着</td></tr>
+
+                <tr><td rowspan="2" style="padding:10px; font-weight:700; color:#818CF8;">ピンポイント単複防衛</td><td style="padding:8px 10px;">皐月賞・ホープフルS</td><td style="padding:8px 10px; font-weight:700;">単勝◎</td><td style="padding:8px 10px;">1点 (100円)</td><td style="padding:8px 10px;">相手が絞りにくい中山2000m。実力軸馬の単勝勝負</td></tr>
+                <tr><td style="padding:8px 10px;">安田記念・マイルCS</td><td style="padding:8px 10px; font-weight:700;">複勝◎</td><td style="padding:8px 10px;">1点 (100円)</td><td style="padding:8px 10px;">極限の混戦マイル。手を出さず複勝1点で手堅く防衛</td></tr>
+            </tbody>
+        </table>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 # ==========================================
 # 📈 スプレッドシート連携
 # ==========================================
@@ -1836,3 +1903,4 @@ elif menu == "📈 スプレッドシート連携":
             st.dataframe(df_target, use_container_width=True)
     else:
         st.error("🚨 スプレッドシートに接続できませんでした。")
+EOF
