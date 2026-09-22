@@ -1731,13 +1731,43 @@ elif menu == "🗄️ 過去データ分析":
         unsafe_allow_html=True,
     )
 
-    st.markdown("""
-    | トラック | 最終確定ルール | 買い目 | 期待値・安定度 |
-    | :--- | :--- | :--- | :--- |
-    | **🟢 芝** | **先行力重視** × 1人気2.0〜3.5倍<br><br>**※同型激突（先行4頭以上）は徹底見送り** | 馬連3点（◎-◯, ▲, △1）<br><br>※本線5.0倍以上 | 直近3年連続110%超<br><br>（2026年 113.2%） |
-    | **🟤 ダート** | **特注血統（米国系）** × 1人気3.5倍未満<br>× 軸中外枠 | 馬連3点（◎-◯, ▲, △1）<br><br>※本線5.0倍以上 | 5年通算プラス<br><br>（中穴激走ゾーン） |
-    | **🌐 総合** | **上記2大条件 ＋ 本線5.0倍未満・同型激突の完全排除** | **馬連3点（計300円）** | **5年通算回収率 103.9%**<br><br>**直近3年連続プラス達成** |
-    """)
+    st.markdown(
+        """
+        <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #1E273D; margin-top: 1rem;">
+        <table style="width:100%; border-collapse: collapse; color: #F3F4F6; background-color: #141A29; font-size: 0.95rem;">
+            <thead>
+                <tr style="background-color: #0E1322; color: #94A3B8; border-bottom: 2px solid #1E273D; text-align: left;">
+                    <th style="padding: 12px 14px; font-weight: 600;">トラック</th>
+                    <th style="padding: 12px 14px; font-weight: 600;">最終確定ルール</th>
+                    <th style="padding: 12px 14px; font-weight: 600;">買い目</th>
+                    <th style="padding: 12px 14px; font-weight: 600;">期待値・安定度</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom: 1px solid #1E273D; vertical-align: top;">
+                    <td style="padding: 14px; font-weight: 700; white-space: nowrap;">🟢 芝</td>
+                    <td style="padding: 14px; line-height: 1.6;"><b>先行力重視</b> × 1人気2.0〜3.5倍<br><br><span style="font-weight:700;">※同型激突（先行4頭以上）は徹底見送り</span></td>
+                    <td style="padding: 14px; line-height: 1.6;">馬連3点（◎-◯, ▲, △1）<br><br><span style="color: #94A3B8;">※本線5.0倍以上</span></td>
+                    <td style="padding: 14px; line-height: 1.6;">直近3年連続110%超<br><br>（2026年 113.2%）</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #1E273D; vertical-align: top;">
+                    <td style="padding: 14px; font-weight: 700; white-space: nowrap;">🟤 ダート</td>
+                    <td style="padding: 14px; line-height: 1.6;"><b>特注血統（米国系）</b> × 1人気3.5倍未満<br>× 軸中外枠</td>
+                    <td style="padding: 14px; line-height: 1.6;">馬連3点（◎-◯, ▲, △1）<br><br><span style="color: #94A3B8;">※本線5.0倍以上</span></td>
+                    <td style="padding: 14px; line-height: 1.6;">5年通算プラス<br><br>（中穴激走ゾーン）</td>
+                </tr>
+                <tr style="vertical-align: top;">
+                    <td style="padding: 14px; font-weight: 700; white-space: nowrap;">🌐 総合</td>
+                    <td style="padding: 14px; font-weight: 700; line-height: 1.6;">上記2大条件 ＋ 本線5.0倍未満・同型激突の完全排除</td>
+                    <td style="padding: 14px; font-weight: 700; line-height: 1.6;">馬連3点（計300円）</td>
+                    <td style="padding: 14px; font-weight: 700; line-height: 1.6;">5年通算回収率 103.9%<br><br>直近3年連続プラス達成</td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # ==========================================
 # 📈 スプレッドシート連携
