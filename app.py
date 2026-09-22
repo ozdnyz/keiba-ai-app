@@ -1194,7 +1194,7 @@ if menu == "📊 ダッシュボード":
     )
 
 # ==========================================
-# 🎯 画面 2: 厳選勝負レース（👑 ハイブリッド投資・完全対応）
+# 🎯 画面 2: 厳選勝負レース（ハイブリッド＆全券種対応＋詳細アコーディオン付き）
 # ==========================================
 elif menu == "🎯 厳選勝負レース":
     st.markdown(
@@ -1229,7 +1229,7 @@ elif menu == "🎯 厳選勝負レース":
                 <div class="race-card">
                     <div class="race-header">
                         <span class="race-name">📍 [{r['競馬場']}] {r['レース名']} ({r['条件']})</span>
-                        <span class="race-badge">👑 ハイブリッド勝負 (計800円)</span>
+                        <span class="race-badge">👑 勝負レース</span>
                     </div>
                     <div style="font-size: 0.95rem; color: #E2E8F0; margin-bottom: 0.8rem;">
                         🎯 <b>軸馬 (◎)</b> : <span style="color: #6366F1; font-weight:700;">{r['軸馬 (◎)']}</span>
@@ -1238,15 +1238,13 @@ elif menu == "🎯 厳選勝負レース":
                 unsafe_allow_html=True,
             )
 
-            # 券種別にワイドと馬単を自動振り分け
-            if "券種" in sub_df.columns:
-                df_wide = sub_df[sub_df["券種"] == "ワイド"]
-                df_umatan = sub_df[sub_df["券種"] == "馬単"]
-            else:
-                df_wide = sub_df[sub_df["買い目"].str.contains("-", na=False)]
-                df_umatan = sub_df[sub_df["買い目"].str.contains("➔", na=False)]
+            # 券種別にワイド・馬単・その他（馬連など）を柔軟に自動振り分け
+            sub_df["_kenshu"] = sub_df["券種"].astype(str).str.strip() if "券種" in sub_df.columns else ""
+            df_wide = sub_df[sub_df["_kenshu"].str.contains("ワイド", na=False)]
+            df_umatan = sub_df[sub_df["_kenshu"].str.contains("馬単", na=False) | sub_df["買い目"].astype(str).str.contains("➔", na=False)]
+            df_other = sub_df[~sub_df.index.isin(df_wide.index) & ~sub_df.index.isin(df_umatan.index)]
 
-            # 🛡️ 【守り】ワイド5点
+            # 🛡️ 【守り】ワイド
             if not df_wide.empty:
                 st.markdown(
                     '<div style="font-size:0.85rem; font-weight:700; color:#10B981; margin-bottom:6px;">🛡️ 【守り】ワイド5点（各100円・計500円 / 的中率55%・最大10連敗防衛）</div>',
@@ -1259,13 +1257,13 @@ elif menu == "🎯 厳選勝負レース":
                             f"""
                             <div style="background:#1B2338; padding:8px 10px; border-radius:8px; border-left:3px solid #10B981; margin-bottom:6px;">
                                 <b style="font-size:0.95rem; color:#FFFFFF;">ワイド {row_w['買い目']}</b><br>
-                                <span style="font-size:0.78rem; color:#CBD5E1;">相手: {row_w['相手馬']}<br>想定: {row_w['想定オッズ']}</span>
+                                <span style="font-size:0.78rem; color:#CBD5E1;">相手: {row_w.get('相手馬', '')}<br>想定: {row_w.get('想定オッズ', '')}</span>
                             </div>
                             """,
                             unsafe_allow_html=True,
                         )
 
-            # 🚀 【攻め】馬単3点
+            # 🚀 【攻め】馬単
             if not df_umatan.empty:
                 st.markdown(
                     '<div style="font-size:0.85rem; font-weight:700; color:#F59E0B; margin-top:6px; margin-bottom:6px;">🚀 【攻め】馬単1着固定3点（各100円・計300円 / 回収率133%ゾーン直撃）</div>',
@@ -1278,11 +1276,36 @@ elif menu == "🎯 厳選勝負レース":
                             f"""
                             <div style="background:#1B2338; padding:8px 10px; border-radius:8px; border-left:3px solid #F59E0B; margin-bottom:6px;">
                                 <b style="font-size:0.95rem; color:#FFFFFF;">馬単 {row_u['買い目']}</b><br>
-                                <span style="font-size:0.78rem; color:#CBD5E1;">相手: {row_u['相手馬']}<br>想定: {row_u['想定オッズ']}</span>
+                                <span style="font-size:0.78rem; color:#CBD5E1;">相手: {row_u.get('相手馬', '')}<br>想定: {row_u.get('想定オッズ', '')}</span>
                             </div>
                             """,
                             unsafe_allow_html=True,
                         )
+
+            # 💡 以前の馬連データ等が入っていた場合のフォールバック表示
+            if not df_other.empty:
+                st.markdown(
+                    '<div style="font-size:0.85rem; font-weight:700; color:#3B82F6; margin-bottom:6px;">🎯 推奨買い目一覧</div>',
+                    unsafe_allow_html=True,
+                )
+                o_cols = st.columns(min(len(df_other), 3))
+                for o_i, (_, row_o) in enumerate(df_other.head(3).iterrows()):
+                    with o_cols[o_i]:
+                        t_name = row_o.get("券種", "馬連")
+                        st.markdown(
+                            f"""
+                            <div style="background:#1B2338; padding:8px 10px; border-radius:8px; border-left:3px solid #3B82F6; margin-bottom:6px;">
+                                <b style="font-size:0.95rem; color:#FFFFFF;">{t_name} {row_o['買い目']}</b><br>
+                                <span style="font-size:0.78rem; color:#CBD5E1;">相手: {row_o.get('相手馬', '')} ｜ 想定: {row_o.get('想定オッズ', '')}</span>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+
+            # 🌟 クリックでさらに詳しく見られるアコーディオン展開
+            with st.expander("📋 このレースの全買い目・詳細オッズデータを確認"):
+                disp_cols = [c for c in ["券種", "買い目", "相手馬", "想定オッズ", "推奨金額(円)", "期待値", "判断"] if c in sub_df.columns]
+                st.dataframe(sub_df[disp_cols], use_container_width=True, hide_index=True)
 
             st.markdown("</div>", unsafe_allow_html=True)
     else:
