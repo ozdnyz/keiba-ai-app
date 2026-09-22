@@ -1,4 +1,3 @@
-cat << 'EOF' > ~/app.py
 from datetime import datetime
 import json
 import os
@@ -78,7 +77,7 @@ st.markdown(
         color: #FFFFFF !important;
     }
 
-    /* 🌟 出馬表画面の天候切り替えボタン（文字をクッキリ純白・見やすくボタン化） */
+    /* 🌟 出馬表画面の天候切り替えボタン */
     div[data-testid="stRadio"] div[role="radiogroup"] label {
         background-color: #141A29 !important;
         border: 1px solid #2B354F !important;
@@ -102,7 +101,7 @@ st.markdown(
         font-weight: 700 !important;
     }
 
-    /* 🌟 タブデザイン（高コントラスト・文字がクッキリ見える純白仕様・Streamlit標準の赤下線完全非表示） */
+    /* 🌟 タブデザイン */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px !important;
         background-color: transparent !important;
@@ -142,7 +141,6 @@ st.markdown(
         margin: 0px !important;
     }
 
-    /* 🌟 右側のヘッダー（左のタブと全く同じ高さ38px・枠のすぐ上に配置） */
     .right-card-header {
         height: 48px !important;
         min-height: 38px !important;
@@ -258,7 +256,7 @@ st.markdown(
         padding: 1.4rem !important;
     }
 
-    /* 🌟 リッチKPIカード（高さ165px完全固定・上下配置・左端バー表示対応） */
+    /* 🌟 リッチKPIカード */
     .kpi-rich-card {
         background: #141A29 !important;
         border: 1px solid #1E273D !important;
@@ -1903,4 +1901,3 @@ elif menu == "📈 スプレッドシート連携":
             st.dataframe(df_target, use_container_width=True)
     else:
         st.error("🚨 スプレッドシートに接続できませんでした。")
-EOF
