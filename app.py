@@ -418,7 +418,7 @@ def get_gspread_client():
 def load_sheet_data():
     gc = get_gspread_client()
     if not gc:
-        return None, None, None
+        return None, None, None, None
     try:
         ss = gc.open(SS_NAME)
         try:
@@ -453,12 +453,31 @@ def load_sheet_data():
         except:
             df_daily = pd.DataFrame()
 
-        return df_target, df_today, df_daily
+        # 🌟 G1予想シートの読み込み
+        try:
+            ws_g1 = ss.worksheet("G1予想")
+            all_g1_vals = ws_g1.get_all_values()
+            if all_g1_vals and len(all_g1_vals) > 1:
+                g1_rows = []
+                headers_g1 = all_g1_vals[0]
+                for r in all_g1_vals[1:]:
+                    if not r or "--- 見送り" in r[0]:
+                        break
+                    g1_rows.append(r)
+                df_g1 = pd.DataFrame(
+                    g1_rows, columns=headers_g1[: len(g1_rows[0])]
+                )
+            else:
+                df_g1 = pd.DataFrame()
+        except:
+            df_g1 = pd.DataFrame()
+
+        return df_target, df_today, df_daily, df_g1
     except Exception:
-        return None, None, None
+        return None, None, None, None
 
 
-df_target, df_today, df_daily_log = load_sheet_data()
+df_target, df_today, df_daily_log, df_g1 = load_sheet_data()
 
 
 # ==========================================
@@ -517,6 +536,7 @@ with st.sidebar:
         [
             "📊 ダッシュボード",
             "🎯 厳選勝負レース",
+            "👑 G1専用予想",
             "🏇 全レース出馬表",
             "💰 収支入力・管理",
             "💻 ターミナル操作マニュアル",
@@ -696,7 +716,6 @@ if menu == "📊 ダッシュボード":
             df_target_latest[["競馬場", "レース名"]].drop_duplicates()
         )
 
-    # 🌟「会場」＋「レース名」のセットでユニーク判定し、同名レースの重複合算を防止
     if df_today is not None and not df_today.empty and "日付" in df_today.columns:
         if not latest_date_str:
             latest_date_str = df_today["日付"].max()
@@ -713,11 +732,8 @@ if menu == "📊 ダッシュボード":
         else:
             today_race_count = len(df_today_latest["レース名"].unique())
 
-    # 🌟 G1特化（300〜600円）および平場ハイブリッド（800円）の可変投資額を自動合算
-    if df_target is not None and not df_target.empty and "日付" in df_target.columns and "推奨金額(円)" in df_target_latest.columns:
-        today_investment = pd.to_numeric(df_target_latest["推奨金額(円)"], errors="coerce").fillna(0).astype(int).sum()
-    else:
-        today_investment = today_target_count * 800
+    # 🌟 ハイブリッド投資（ワイド5点＋馬単3点＝計800円）に対応
+    today_investment = today_target_count * 800
 
     c1, c2 = st.columns(2)
 
@@ -880,7 +896,7 @@ if menu == "📊 ダッシュボード":
         st.markdown(
             f"""
             <div style="background:#141A29; border:1px solid #1E273D; border-radius:10px; padding:0.9rem 1.1rem; margin-bottom:0.6rem;">
-                <div style="font-size:0.82rem; color:#CBD5E1;">💸 最新日 推奨投資総額</div>
+                <div style="font-size:0.82rem; color:#CBD5E1;">💸 最新日 推奨投資額 (計800円)</div>
                 <div style="font-size:1.4rem; font-weight:700; color:#FFFFFF;">{today_investment:,} <span style="font-size:0.85rem; color:#94A3B8; font-weight:400;">円</span></div>
             </div>
             """,
@@ -889,7 +905,7 @@ if menu == "📊 ダッシュボード":
 
     st.write("")
 
-    # 回収率推移グラフ（上限自動計算・月別/年別/累積集計対応）
+    # 回収率推移グラフ
     col_chart_title, col_chart_select = st.columns([6, 4])
     with col_chart_title:
         st.markdown(
@@ -1066,7 +1082,7 @@ if menu == "📊 ダッシュボード":
                         )
                     )
 
-            # 3. 日毎・累積推移モード（全体で通算累積を計算した上で切り出し）
+            # 3. 日毎・累積推移モード
             else:
                 if ai_inv_col and ai_ret_col:
                     df_plot["AI_CUM_I"] = df_plot[ai_inv_col].cumsum()
@@ -1090,7 +1106,7 @@ if menu == "📊 ダッシュボード":
                     sub_df = df_plot.tail(10).copy()
                 elif chart_mode == "日毎 (直近30日)":
                     sub_df = df_plot.tail(30).copy()
-                else:  # 全期間 (累積推移)
+                else:
                     sub_df = df_plot.copy()
 
                 x_vals = sub_df["日付_dt"].dt.strftime("%m/%d").tolist()
@@ -1321,6 +1337,80 @@ elif menu == "🎯 厳選勝負レース":
             st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("スプレッドシートに最新の勝負レースデータがありません。")
+
+# ==========================================
+# 👑 画面: G1専用予想（新設タブ）
+# ==========================================
+elif menu == "👑 G1専用予想":
+    st.markdown(
+        '<div class="main-title">👑 G1専用 特化予想</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="last-update">スプレッドシート「G1予想」から最新のG1解析結果を取得中（土曜手動予想・日曜朝自動予想連動）</div>',
+        unsafe_allow_html=True,
+    )
+
+    if (
+        df_g1 is not None
+        and not df_g1.empty
+        and "日付" in df_g1.columns
+    ):
+        latest_g1_date = df_g1["日付"].max()
+        df_g1_latest = df_g1[df_g1["日付"] == latest_g1_date]
+
+        unique_g1_races = df_g1_latest[
+            ["日付", "競馬場", "レース名", "条件", "軸馬 (◎)"]
+        ].drop_duplicates()
+
+        for _, r in unique_g1_races.iterrows():
+            sub_df = df_g1_latest[
+                (df_g1_latest["競馬場"] == r["競馬場"])
+                & (df_g1_latest["レース名"] == r["レース名"])
+            ]
+
+            judge_str = str(sub_df["判断"].iloc[0]) if "判断" in sub_df.columns and len(sub_df) > 0 else ""
+            is_buy = "買い" in judge_str
+            badge_html = '<span class="status-badge-buy" style="margin-bottom:0; padding:4px 10px;">🎯 AI判定：買い勝負</span>' if is_buy else '<span class="status-badge-skip" style="margin-bottom:0; padding:4px 10px;">✋ AI判定：見送り (参考買い目)</span>'
+
+            st.markdown(
+                f"""
+                <div class="race-card" style="border: 1px solid #6366F1;">
+                    <div class="race-header">
+                        <span class="race-name" style="color:#A5B4FC;">🏆 [{r['競馬場']}] {r['レース名']} ({r['条件']})</span>
+                        {badge_html}
+                    </div>
+                    <div style="font-size: 0.95rem; color: #E2E8F0; margin-bottom: 0.8rem;">
+                        🎯 <b>軸馬 / 注目</b> : <span style="color: #6366F1; font-weight:700;">{r['軸馬 (◎)']}</span>
+                        <span style="font-size:0.82rem; color:#94A3B8; margin-left:12px;">（※見送り判定の場合はAI通算回収率に計算されません）</span>
+                    </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            # 券種カードの動的表示
+            cols_grid = st.columns(min(len(sub_df), 6))
+            for b_i, (_, row_b) in enumerate(sub_df.head(6).iterrows()):
+                with cols_grid[b_i]:
+                    k_name = row_b.get("券種", "買い目")
+                    border_c = "#6366F1" if "単" in k_name else ("#10B981" if "ワイド" in k_name else "#F59E0B")
+                    st.markdown(
+                        f"""
+                        <div style="background:#1B2338; padding:8px 10px; border-radius:8px; border-left:3px solid {border_c}; margin-bottom:6px;">
+                            <b style="font-size:0.92rem; color:#FFFFFF;">{k_name} {row_b['買い目']}</b><br>
+                            <span style="font-size:0.75rem; color:#CBD5E1;">相手: {row_b.get('相手馬', '')}<br>想定: {row_b.get('想定オッズ', '')}</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+            with st.expander("📋 このG1レースの全買い目・詳細データを確認"):
+                disp_cols = [c for c in ["券種", "買い目", "相手馬", "想定オッズ", "推奨金額(円)", "判断"] if c in sub_df.columns]
+                st.dataframe(sub_df[disp_cols], use_container_width=True, hide_index=True)
+
+            st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.info("スプレッドシート「G1予想」に最新のG1データがありません。土曜日にターミナルで `g1.py` を実行するか、日曜朝の `run.py` 実行をお待ちください。")
 
 # ==========================================
 # 🏇 画面 3: 全レース出馬表
@@ -1701,14 +1791,14 @@ elif menu == "💻 ターミナル操作マニュアル":
         unsafe_allow_html=True,
     )
 
-    # 🌟 G1専用 事前予想ブロック（画像の内容）
+    # 🌟 G1専用 事前予想ブロック
     st.markdown(
         """
     <div style="background:#141A29; border:1px solid #6366F1; border-left:5px solid #6366F1; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
         <h4 style="color:#FFFFFF; margin-top:0; font-size:1.05rem;">🎯 使い方（土曜日の空いた時間にターミナルで実行するだけ）</h4>
         <div style="font-size:0.88rem; color:#E2E8F0; margin-bottom:0.8rem; line-height:1.6;">
             枠順確定後（金曜の夕方以降や土曜日のいつでも）、以下の形式で実行します。<br>
-            ※オッズ未発売でも枠順・能力(RL)・適性(CL)・G1コースバイアスから最適買い目を瞬時に算出します。
+            ※オッズ未発売でも枠順・能力(RL)・適性(CL)・G1コースバイアスから最適買い目を瞬時に算出し、アプリの「👑 G1専用予想」へ保存します。
         </div>
     """,
         unsafe_allow_html=True,
