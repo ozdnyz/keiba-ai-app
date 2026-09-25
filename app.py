@@ -77,7 +77,7 @@ st.markdown(
         color: #FFFFFF !important;
     }
 
-    /* 🌟 出馬表画面の天候切り替えボタン */
+    /* 🌟 天候切り替えボタン */
     div[data-testid="stRadio"] div[role="radiogroup"] label {
         background-color: #141A29 !important;
         border: 1px solid #2B354F !important;
@@ -453,7 +453,6 @@ def load_sheet_data():
         except:
             df_daily = pd.DataFrame()
 
-        # 🌟 G1予想シートの読み込み
         try:
             ws_g1 = ss.worksheet("G1予想")
             all_g1_vals = ws_g1.get_all_values()
@@ -1237,7 +1236,6 @@ elif menu == "🎯 厳選勝負レース":
         latest_date_str = df_target["日付"].max()
         df_target_latest = df_target[df_target["日付"] == latest_date_str]
 
-        # 🌟 レース名だけで1つに重複排除（ペアごとの多重描画を防止）
         unique_races = df_target_latest[
             ["日付", "競馬場", "レース名", "条件"]
         ].drop_duplicates()
@@ -1352,7 +1350,7 @@ elif menu == "🎯 厳選勝負レース":
         st.info("スプレッドシートに最新の勝負レースデータがありません。")
 
 # ==========================================
-# 👑 画面: G1専用予想（1レース1カードに完全統合）
+# 👑 画面: G1専用予想（馬場切り替えボタン対応）
 # ==========================================
 elif menu == "👑 G1専用予想":
     st.markdown(
@@ -1360,8 +1358,28 @@ elif menu == "👑 G1専用予想":
         unsafe_allow_html=True,
     )
     st.markdown(
-        '<div class="last-update">スプレッドシート「G1予想」から最新のG1解析結果を取得中（土曜手動予想・日曜朝自動予想連動）</div>',
+        '<div class="last-update">スプレッドシート「G1予想」から最新のG1解析結果を取得中（馬場状態を切り替えて各馬場の最適買い目をシミュレーションできます）</div>',
         unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div style="font-size:0.95rem; font-weight:700; color:#FFFFFF;'
+        ' margin-bottom:6px;">⛅ 馬場状態の切り替えシミュレーション</div>',
+        unsafe_allow_html=True,
+    )
+    sel_baba_g1 = st.radio(
+        "",
+        ["☀️ 良", "⛅ 稍重", "☂️ 重", "🌀 不良"],
+        horizontal=True,
+        label_visibility="collapsed",
+        key="radio_g1_baba",
+    )
+    st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
+    b_val_g1 = (
+        sel_baba_g1.replace("☀️ ", "")
+        .replace("⛅ ", "")
+        .replace("☂️ ", "")
+        .replace("🌀 ", "")
     )
 
     if (
@@ -1372,22 +1390,26 @@ elif menu == "👑 G1専用予想":
         latest_g1_date = df_g1["日付"].max()
         df_g1_latest = df_g1[df_g1["日付"] == latest_g1_date]
 
-        # 🌟 レース名だけで1つに重複排除（ペアごとの6重描画を完全に防止）
-        unique_g1_races = df_g1_latest[
+        # 🌟 選択した馬場状態でフィルタリング（馬場列が存在する場合）
+        if "馬場" in df_g1_latest.columns and (df_g1_latest["馬場"] == b_val_g1).any():
+            df_g1_disp = df_g1_latest[df_g1_latest["馬場"] == b_val_g1]
+        else:
+            df_g1_disp = df_g1_latest
+
+        unique_g1_races = df_g1_disp[
             ["日付", "競馬場", "レース名", "条件"]
         ].drop_duplicates()
 
         for _, r in unique_g1_races.iterrows():
-            sub_df = df_g1_latest[
-                (df_g1_latest["競馬場"] == r["競馬場"])
-                & (df_g1_latest["レース名"] == r["レース名"])
+            sub_df = df_g1_disp[
+                (df_g1_disp["競馬場"] == r["競馬場"])
+                & (df_g1_disp["レース名"] == r["レース名"])
             ]
 
             judge_str = str(sub_df["判断"].iloc[0]) if "判断" in sub_df.columns and len(sub_df) > 0 else ""
             is_buy = "買い" in judge_str
-            badge_html = '<span class="status-badge-buy" style="margin-bottom:0; padding:4px 10px;">🎯 AI判定：買い勝負</span>' if is_buy else '<span class="status-badge-skip" style="margin-bottom:0; padding:4px 10px;">✋ AI判定：見送り (参考買い目)</span>'
+            badge_html = f'<span class="status-badge-buy" style="margin-bottom:0; padding:4px 10px;">🎯 AI判定：買い勝負（{b_val_g1}）</span>' if is_buy else f'<span class="status-badge-skip" style="margin-bottom:0; padding:4px 10px;">✋ AI判定：見送り (参考買い目・{b_val_g1})</span>'
 
-            # 軸馬 / BOX馬番のスマートな表示
             first_jiku = (
                 str(sub_df["軸馬 (◎)"].iloc[0])
                 if "軸馬 (◎)" in sub_df.columns
@@ -1410,7 +1432,7 @@ elif menu == "👑 G1専用予想":
                 f"""
                 <div class="race-card" style="border: 1px solid #6366F1; margin-bottom: 1.5rem;">
                     <div class="race-header">
-                        <span class="race-name" style="color:#A5B4FC;">🏆 [{r['競馬場']}] {r['レース名']} ({r['条件']})</span>
+                        <span class="race-name" style="color:#A5B4FC;">🏆 [{r['競馬場']}] {r['レース名']} ({r['条件']} / {b_val_g1})</span>
                         {badge_html}
                     </div>
                     <div style="font-size: 0.95rem; color: #E2E8F0; margin-bottom: 0.8rem;">
@@ -1421,7 +1443,6 @@ elif menu == "👑 G1専用予想":
                 unsafe_allow_html=True,
             )
 
-            # 券種カードの動的表示（1つのカードの内側に全買い目を展開）
             cols_grid = st.columns(min(len(sub_df), 6))
             for b_i, (_, row_b) in enumerate(sub_df.head(6).iterrows()):
                 with cols_grid[b_i]:
@@ -1437,8 +1458,8 @@ elif menu == "👑 G1専用予想":
                         unsafe_allow_html=True,
                     )
 
-            with st.expander("📋 このG1レースの全買い目・詳細データを確認"):
-                disp_cols = [c for c in ["券種", "買い目", "相手馬", "想定オッズ", "推奨金額(円)", "判断"] if c in sub_df.columns]
+            with st.expander(f"📋 このG1レースの全買い目・詳細データを確認（{b_val_g1}）"):
+                disp_cols = [c for c in ["馬場", "券種", "買い目", "相手馬", "想定オッズ", "推奨金額(円)", "判断"] if c in sub_df.columns]
                 st.dataframe(sub_df[disp_cols], use_container_width=True, hide_index=True)
 
             st.markdown("</div>", unsafe_allow_html=True)
@@ -1830,7 +1851,7 @@ elif menu == "💻 ターミナル操作マニュアル":
         <h4 style="color:#FFFFFF; margin-top:0; font-size:1.05rem;">🎯 使い方（土曜日の空いた時間にターミナルで実行するだけ）</h4>
         <div style="font-size:0.88rem; color:#E2E8F0; margin-bottom:0.8rem; line-height:1.6;">
             枠順確定後（金曜の夕方以降や土曜日のいつでも）、以下の形式で実行します。<br>
-            ※オッズ未発売でも枠順・能力(RL)・適性(CL)・G1コースバイアスから最適買い目を瞬時に算出し、アプリの「👑 G1専用予想」へ保存します。
+            ※全4馬場（良・稍重・重・不良）の最適買い目を瞬時に算出し、アプリの「👑 G1専用予想」へ自動保存します。
         </div>
     """,
         unsafe_allow_html=True,
