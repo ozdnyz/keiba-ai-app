@@ -732,7 +732,6 @@ if menu == "📊 ダッシュボード":
         else:
             today_race_count = len(df_today_latest["レース名"].unique())
 
-    # 🌟 ハイブリッド投資（ワイド5点＋馬単3点＝計800円）に対応
     today_investment = today_target_count * 800
 
     c1, c2 = st.columns(2)
@@ -964,7 +963,6 @@ if menu == "📊 ダッシュボード":
                 else ("払戻額" if "払戻額" in df_plot.columns else "")
             )
 
-            # 1. 月別集計モード
             if chart_mode == "月ごと (月別集計)":
                 df_plot["集計キー"] = df_plot["日付_dt"].dt.strftime("%Y/%m")
                 agg_cols = {
@@ -1023,7 +1021,6 @@ if menu == "📊 ダッシュボード":
                         )
                     )
 
-            # 2. 年別集計モード
             elif chart_mode == "年ごと (年別集計)":
                 df_plot["集計キー"] = df_plot["日付_dt"].dt.strftime("%Y年")
                 agg_cols = {
@@ -1082,7 +1079,6 @@ if menu == "📊 ダッシュボード":
                         )
                     )
 
-            # 3. 日毎・累積推移モード
             else:
                 if ai_inv_col and ai_ret_col:
                     df_plot["AI_CUM_I"] = df_plot[ai_inv_col].cumsum()
@@ -1221,7 +1217,7 @@ if menu == "📊 ダッシュボード":
     )
 
 # ==========================================
-# 🎯 画面 2: 厳選勝負レース（ハイブリッド＆全券種対応＋詳細アコーディオン付き）
+# 🎯 画面 2: 厳選勝負レース（レースごとに1カードに統合）
 # ==========================================
 elif menu == "🎯 厳選勝負レース":
     st.markdown(
@@ -1241,8 +1237,9 @@ elif menu == "🎯 厳選勝負レース":
         latest_date_str = df_target["日付"].max()
         df_target_latest = df_target[df_target["日付"] == latest_date_str]
 
+        # 🌟 レース名だけで1つに重複排除（ペアごとの多重描画を防止）
         unique_races = df_target_latest[
-            ["日付", "競馬場", "レース名", "条件", "軸馬 (◎)"]
+            ["日付", "競馬場", "レース名", "条件"]
         ].drop_duplicates()
 
         for _, r in unique_races.iterrows():
@@ -1250,6 +1247,24 @@ elif menu == "🎯 厳選勝負レース":
                 (df_target_latest["競馬場"] == r["競馬場"])
                 & (df_target_latest["レース名"] == r["レース名"])
             ]
+
+            first_jiku = (
+                str(sub_df["軸馬 (◎)"].iloc[0])
+                if "軸馬 (◎)" in sub_df.columns
+                else ""
+            )
+            if "BOX" in first_jiku:
+                all_box_nums = set()
+                for km in sub_df.get("買い目", []):
+                    all_box_nums.update(re.findall(r"\d+", str(km)))
+                sorted_box = sorted(list(all_box_nums), key=lambda x: int(x))
+                jiku_disp = (
+                    f"ワイドBOX選出馬: 【 {'番, '.join(sorted_box)}番 】 (計{len(sub_df)}点)"
+                    if sorted_box
+                    else "ワイドBOX"
+                )
+            else:
+                jiku_disp = first_jiku
 
             st.markdown(
                 f"""
@@ -1259,38 +1274,37 @@ elif menu == "🎯 厳選勝負レース":
                         <span class="race-badge">👑 勝負レース</span>
                     </div>
                     <div style="font-size: 0.95rem; color: #E2E8F0; margin-bottom: 0.8rem;">
-                        🎯 <b>軸馬 (◎)</b> : <span style="color: #6366F1; font-weight:700;">{r['軸馬 (◎)']}</span>
+                        🎯 <b>選定内容 / 軸馬</b> : <span style="color: #6366F1; font-weight:700;">{jiku_disp}</span>
                     </div>
                 """,
                 unsafe_allow_html=True,
             )
 
-            # 券種別にワイド・馬単・その他（馬連など）を柔軟に自動振り分け
             sub_df["_kenshu"] = sub_df["券種"].astype(str).str.strip() if "券種" in sub_df.columns else ""
             df_wide = sub_df[sub_df["_kenshu"].str.contains("ワイド", na=False)]
             df_umatan = sub_df[sub_df["_kenshu"].str.contains("馬単", na=False) | sub_df["買い目"].astype(str).str.contains("➔", na=False)]
             df_other = sub_df[~sub_df.index.isin(df_wide.index) & ~sub_df.index.isin(df_umatan.index)]
 
-            # 🛡️ 【守り】ワイド
             if not df_wide.empty:
+                w_label = "🛡️ ワイド / ワイドBOX" if "BOX" in first_jiku else "🛡️ 【守り】ワイド5点（各100円・計500円 / 的中率55%・最大10連敗防衛）"
                 st.markdown(
-                    '<div style="font-size:0.85rem; font-weight:700; color:#10B981; margin-bottom:6px;">🛡️ 【守り】ワイド5点（各100円・計500円 / 的中率55%・最大10連敗防衛）</div>',
+                    f'<div style="font-size:0.85rem; font-weight:700; color:#10B981; margin-bottom:6px;">{w_label}</div>',
                     unsafe_allow_html=True,
                 )
-                w_cols = st.columns(min(len(df_wide), 5))
-                for w_i, (_, row_w) in enumerate(df_wide.head(5).iterrows()):
+                w_cols = st.columns(min(len(df_wide), 6))
+                for w_i, (_, row_w) in enumerate(df_wide.head(6).iterrows()):
                     with w_cols[w_i]:
+                        k_name = row_w.get('券種', 'ワイド')
                         st.markdown(
                             f"""
                             <div style="background:#1B2338; padding:8px 10px; border-radius:8px; border-left:3px solid #10B981; margin-bottom:6px;">
-                                <b style="font-size:0.95rem; color:#FFFFFF;">ワイド {row_w['買い目']}</b><br>
+                                <b style="font-size:0.95rem; color:#FFFFFF;">{k_name} {row_w['買い目']}</b><br>
                                 <span style="font-size:0.78rem; color:#CBD5E1;">相手: {row_w.get('相手馬', '')}<br>想定: {row_w.get('想定オッズ', '')}</span>
                             </div>
                             """,
                             unsafe_allow_html=True,
                         )
 
-            # 🚀 【攻め】馬単
             if not df_umatan.empty:
                 st.markdown(
                     '<div style="font-size:0.85rem; font-weight:700; color:#F59E0B; margin-top:6px; margin-bottom:6px;">🚀 【攻め】馬単1着固定3点（各100円・計300円 / 回収率133%ゾーン直撃）</div>',
@@ -1309,19 +1323,19 @@ elif menu == "🎯 厳選勝負レース":
                             unsafe_allow_html=True,
                         )
 
-            # 💡 以前の馬連データ等が入っていた場合のフォールバック表示
             if not df_other.empty:
                 st.markdown(
                     '<div style="font-size:0.85rem; font-weight:700; color:#3B82F6; margin-bottom:6px;">🎯 推奨買い目一覧</div>',
                     unsafe_allow_html=True,
                 )
-                o_cols = st.columns(min(len(df_other), 3))
-                for o_i, (_, row_o) in enumerate(df_other.head(3).iterrows()):
+                o_cols = st.columns(min(len(df_other), 5))
+                for o_i, (_, row_o) in enumerate(df_other.head(5).iterrows()):
                     with o_cols[o_i]:
-                        t_name = row_o.get("券種", "馬連")
+                        t_name = row_o.get("券種", "買い目")
+                        border_color = "#6366F1" if "単" in t_name else "#3B82F6"
                         st.markdown(
                             f"""
-                            <div style="background:#1B2338; padding:8px 10px; border-radius:8px; border-left:3px solid #3B82F6; margin-bottom:6px;">
+                            <div style="background:#1B2338; padding:8px 10px; border-radius:8px; border-left:3px solid {border_color}; margin-bottom:6px;">
                                 <b style="font-size:0.95rem; color:#FFFFFF;">{t_name} {row_o['買い目']}</b><br>
                                 <span style="font-size:0.78rem; color:#CBD5E1;">相手: {row_o.get('相手馬', '')} ｜ 想定: {row_o.get('想定オッズ', '')}</span>
                             </div>
@@ -1329,7 +1343,6 @@ elif menu == "🎯 厳選勝負レース":
                             unsafe_allow_html=True,
                         )
 
-            # 🌟 クリックでさらに詳しく見られるアコーディオン展開
             with st.expander("📋 このレースの全買い目・詳細オッズデータを確認"):
                 disp_cols = [c for c in ["券種", "買い目", "相手馬", "想定オッズ", "推奨金額(円)", "期待値", "判断"] if c in sub_df.columns]
                 st.dataframe(sub_df[disp_cols], use_container_width=True, hide_index=True)
@@ -1339,7 +1352,7 @@ elif menu == "🎯 厳選勝負レース":
         st.info("スプレッドシートに最新の勝負レースデータがありません。")
 
 # ==========================================
-# 👑 画面: G1専用予想（新設タブ）
+# 👑 画面: G1専用予想（1レース1カードに完全統合）
 # ==========================================
 elif menu == "👑 G1専用予想":
     st.markdown(
@@ -1359,8 +1372,9 @@ elif menu == "👑 G1専用予想":
         latest_g1_date = df_g1["日付"].max()
         df_g1_latest = df_g1[df_g1["日付"] == latest_g1_date]
 
+        # 🌟 レース名だけで1つに重複排除（ペアごとの6重描画を完全に防止）
         unique_g1_races = df_g1_latest[
-            ["日付", "競馬場", "レース名", "条件", "軸馬 (◎)"]
+            ["日付", "競馬場", "レース名", "条件"]
         ].drop_duplicates()
 
         for _, r in unique_g1_races.iterrows():
@@ -1373,22 +1387,41 @@ elif menu == "👑 G1専用予想":
             is_buy = "買い" in judge_str
             badge_html = '<span class="status-badge-buy" style="margin-bottom:0; padding:4px 10px;">🎯 AI判定：買い勝負</span>' if is_buy else '<span class="status-badge-skip" style="margin-bottom:0; padding:4px 10px;">✋ AI判定：見送り (参考買い目)</span>'
 
+            # 軸馬 / BOX馬番のスマートな表示
+            first_jiku = (
+                str(sub_df["軸馬 (◎)"].iloc[0])
+                if "軸馬 (◎)" in sub_df.columns
+                else ""
+            )
+            if "BOX" in first_jiku:
+                all_box_nums = set()
+                for km in sub_df.get("買い目", []):
+                    all_box_nums.update(re.findall(r"\d+", str(km)))
+                sorted_box = sorted(list(all_box_nums), key=lambda x: int(x))
+                jiku_disp = (
+                    f"ワイドBOX選出馬: 【 {'番, '.join(sorted_box)}番 】 (計{len(sub_df)}点)"
+                    if sorted_box
+                    else "ワイドBOX"
+                )
+            else:
+                jiku_disp = first_jiku
+
             st.markdown(
                 f"""
-                <div class="race-card" style="border: 1px solid #6366F1;">
+                <div class="race-card" style="border: 1px solid #6366F1; margin-bottom: 1.5rem;">
                     <div class="race-header">
                         <span class="race-name" style="color:#A5B4FC;">🏆 [{r['競馬場']}] {r['レース名']} ({r['条件']})</span>
                         {badge_html}
                     </div>
                     <div style="font-size: 0.95rem; color: #E2E8F0; margin-bottom: 0.8rem;">
-                        🎯 <b>軸馬 / 注目</b> : <span style="color: #6366F1; font-weight:700;">{r['軸馬 (◎)']}</span>
+                        🎯 <b>選定内容 / 軸馬</b> : <span style="color: #6366F1; font-weight:700;">{jiku_disp}</span>
                         <span style="font-size:0.82rem; color:#94A3B8; margin-left:12px;">（※見送り判定の場合はAI通算回収率に計算されません）</span>
                     </div>
                 """,
                 unsafe_allow_html=True,
             )
 
-            # 券種カードの動的表示
+            # 券種カードの動的表示（1つのカードの内側に全買い目を展開）
             cols_grid = st.columns(min(len(sub_df), 6))
             for b_i, (_, row_b) in enumerate(sub_df.head(6).iterrows()):
                 with cols_grid[b_i]:
@@ -1791,7 +1824,6 @@ elif menu == "💻 ターミナル操作マニュアル":
         unsafe_allow_html=True,
     )
 
-    # 🌟 G1専用 事前予想ブロック
     st.markdown(
         """
     <div style="background:#141A29; border:1px solid #6366F1; border-left:5px solid #6366F1; border-radius:12px; padding:1.1rem; margin-bottom:1.2rem;">
