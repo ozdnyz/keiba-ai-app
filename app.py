@@ -336,15 +336,6 @@ st.markdown(
         border-radius: 4px;
         border: 1px solid #6366F1;
     }
-    .race-badge-g1 {
-        background-color: #312E81 !important;
-        color: #A5B4FC !important;
-        font-size: 0.78rem !important;
-        font-weight: 700 !important;
-        padding: 3px 10px !important;
-        border-radius: 6px !important;
-        border: 1px solid #6366F1 !important;
-    }
 
     .status-badge-buy {
         background: rgba(16, 185, 129, 0.15);
@@ -367,6 +358,29 @@ st.markdown(
         border-radius: 6px;
         display: inline-block;
         margin-bottom: 10px;
+    }
+
+    /* 🌟 見送り理由 ＆ 買い転換条件ボックス */
+    .status-badge-skip-box {
+        background: rgba(20, 26, 41, 0.85) !important;
+        border: 1px solid #2B354F !important;
+        border-left: 4px solid #64748B !important;
+        border-radius: 8px !important;
+        padding: 8px 12px !important;
+        margin-bottom: 10px !important;
+    }
+    .skip-reason-line {
+        color: #CBD5E1 !important;
+        font-size: 0.88rem !important;
+        font-weight: 600 !important;
+    }
+    .skip-buy-condition {
+        color: #38BDF8 !important;
+        font-size: 0.84rem !important;
+        font-weight: 700 !important;
+        margin-top: 5px !important;
+        padding-top: 5px !important;
+        border-top: 1px dashed #2B354F !important;
     }
 
     @media screen and (max-width: 768px) {
@@ -418,26 +432,47 @@ def get_gspread_client():
 def load_sheet_data():
     gc = get_gspread_client()
     if not gc:
-        return None, None, None, None
+        return None, None, None, None, None
     try:
         ss = gc.open(SS_NAME)
+        df_target = pd.DataFrame()
+        df_skip = pd.DataFrame()
+
         try:
             ws_target = ss.worksheet("本日勝負レース")
             all_vals = ws_target.get_all_values()
             if all_vals and len(all_vals) > 1:
                 target_rows = []
-                headers = all_vals[0]
+                skip_rows = []
+                headers_target = all_vals[0]
+                headers_skip = []
+                is_skip_section = False
+
                 for r in all_vals[1:]:
-                    if not r or "--- 見送り" in r[0]:
-                        break
-                    target_rows.append(r)
-                df_target = pd.DataFrame(
-                    target_rows, columns=headers[: len(target_rows[0])]
-                )
-            else:
-                df_target = pd.DataFrame()
+                    if not r:
+                        continue
+                    if "--- 見送り" in r[0]:
+                        is_skip_section = True
+                        continue
+                    if is_skip_section:
+                        if not headers_skip:
+                            headers_skip = r
+                        else:
+                            skip_rows.append(r)
+                    else:
+                        target_rows.append(r)
+
+                if target_rows:
+                    df_target = pd.DataFrame(
+                        target_rows, columns=headers_target[: len(target_rows[0])]
+                    )
+                if skip_rows and headers_skip:
+                    df_skip = pd.DataFrame(
+                        skip_rows, columns=headers_skip[: len(skip_rows[0])]
+                    )
         except:
             df_target = pd.DataFrame()
+            df_skip = pd.DataFrame()
 
         try:
             ws_today = ss.worksheet("本日")
@@ -471,12 +506,12 @@ def load_sheet_data():
         except:
             df_g1 = pd.DataFrame()
 
-        return df_target, df_today, df_daily, df_g1
+        return df_target, df_today, df_daily, df_g1, df_skip
     except Exception:
-        return None, None, None, None
+        return None, None, None, None, None
 
 
-df_target, df_today, df_daily_log, df_g1 = load_sheet_data()
+df_target, df_today, df_daily_log, df_g1, df_skip = load_sheet_data()
 
 
 # ==========================================
@@ -559,7 +594,7 @@ with st.sidebar:
     )
 
 # ==========================================
-# 🚀 画面 1: 📊 ダッシュボード（アクセントバー完全適用）
+# 🚀 画面 1: 📊 ダッシュボード
 # ==========================================
 if menu == "📊 ダッシュボード":
     col_h_left, col_h_right = st.columns([7, 3])
@@ -1216,7 +1251,7 @@ if menu == "📊 ダッシュボード":
     )
 
 # ==========================================
-# 🎯 画面 2: 厳選勝負レース（レースごとに1カードに統合）
+# 🎯 画面 2: 厳選勝負レース（見送り監視リストも併設）
 # ==========================================
 elif menu == "🎯 厳選勝負レース":
     st.markdown(
@@ -1278,13 +1313,27 @@ elif menu == "🎯 厳選勝負レース":
                 unsafe_allow_html=True,
             )
 
-            sub_df["_kenshu"] = sub_df["券種"].astype(str).str.strip() if "券種" in sub_df.columns else ""
+            sub_df["_kenshu"] = (
+                sub_df["券種"].astype(str).str.strip()
+                if "券種" in sub_df.columns
+                else ""
+            )
             df_wide = sub_df[sub_df["_kenshu"].str.contains("ワイド", na=False)]
-            df_umatan = sub_df[sub_df["_kenshu"].str.contains("馬単", na=False) | sub_df["買い目"].astype(str).str.contains("➔", na=False)]
-            df_other = sub_df[~sub_df.index.isin(df_wide.index) & ~sub_df.index.isin(df_umatan.index)]
+            df_umatan = sub_df[
+                sub_df["_kenshu"].str.contains("馬単", na=False)
+                | sub_df["買い目"].astype(str).str.contains("➔", na=False)
+            ]
+            df_other = sub_df[
+                ~sub_df.index.isin(df_wide.index)
+                & ~sub_df.index.isin(df_umatan.index)
+            ]
 
             if not df_wide.empty:
-                w_label = "🛡️ ワイド / ワイドBOX" if "BOX" in first_jiku else "🛡️ 【守り】ワイド5点（各100円・計500円 / 的中率55%・最大10連敗防衛）"
+                w_label = (
+                    "🛡️ ワイド / ワイドBOX"
+                    if "BOX" in first_jiku
+                    else "🛡️ 【守り】ワイド5点（各100円・計500円 / 的中率55%・最大10連敗防衛）"
+                )
                 st.markdown(
                     f'<div style="font-size:0.85rem; font-weight:700; color:#10B981; margin-bottom:6px;">{w_label}</div>',
                     unsafe_allow_html=True,
@@ -1292,7 +1341,7 @@ elif menu == "🎯 厳選勝負レース":
                 w_cols = st.columns(min(len(df_wide), 6))
                 for w_i, (_, row_w) in enumerate(df_wide.head(6).iterrows()):
                     with w_cols[w_i]:
-                        k_name = row_w.get('券種', 'ワイド')
+                        k_name = row_w.get("券種", "ワイド")
                         st.markdown(
                             f"""
                             <div style="background:#1B2338; padding:8px 10px; border-radius:8px; border-left:3px solid #10B981; margin-bottom:6px;">
@@ -1330,7 +1379,9 @@ elif menu == "🎯 厳選勝負レース":
                 for o_i, (_, row_o) in enumerate(df_other.head(5).iterrows()):
                     with o_cols[o_i]:
                         t_name = row_o.get("券種", "買い目")
-                        border_color = "#6366F1" if "単" in t_name else "#3B82F6"
+                        border_color = (
+                            "#6366F1" if "単" in t_name else "#3B82F6"
+                        )
                         st.markdown(
                             f"""
                             <div style="background:#1B2338; padding:8px 10px; border-radius:8px; border-left:3px solid {border_color}; margin-bottom:6px;">
@@ -1342,11 +1393,61 @@ elif menu == "🎯 厳選勝負レース":
                         )
 
             with st.expander("📋 このレースの全買い目・詳細オッズデータを確認"):
-                disp_cols = [c for c in ["券種", "買い目", "相手馬", "想定オッズ", "推奨金額(円)", "期待値", "判断"] if c in sub_df.columns]
-                st.dataframe(sub_df[disp_cols], use_container_width=True, hide_index=True)
+                disp_cols = [
+                    c
+                    for c in [
+                        "券種",
+                        "買い目",
+                        "相手馬",
+                        "想定オッズ",
+                        "推奨金額(円)",
+                        "期待値",
+                        "判断",
+                    ]
+                    if c in sub_df.columns
+                ]
+                st.dataframe(
+                    sub_df[disp_cols], use_container_width=True, hide_index=True
+                )
 
             st.markdown("</div>", unsafe_allow_html=True)
-    else:
+
+    # 🌟 見送りレース＆直前オッズ買い転換リスト
+    if df_skip is not None and not df_skip.empty:
+        st.markdown(
+            "<div style='margin-top:1.5rem;'></div>", unsafe_allow_html=True
+        )
+        with st.expander(
+            "✋ 本日の見送りレース一覧（直前オッズ変動による買い転換チェック）",
+            expanded=False,
+        ):
+            st.markdown(
+                '<div style="font-size:0.85rem; color:#94A3B8; margin-bottom:10px;">'
+                "※発走前のオッズ変動で「買い」に化ける可能性のあるレースを監視できます。</div>",
+                unsafe_allow_html=True,
+            )
+            skip_disp_cols = [
+                c
+                for c in [
+                    "日付",
+                    "競馬場",
+                    "レース名",
+                    "判定",
+                    "見送り理由",
+                    "こうなれば買い（直前のオッズ変動等）",
+                    "こうなれば買い（転換条件）",
+                ]
+                if c in df_skip.columns
+            ]
+            if skip_disp_cols:
+                st.dataframe(
+                    df_skip[skip_disp_cols],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            else:
+                st.dataframe(df_skip, use_container_width=True, hide_index=True)
+    elif df_target is None or df_target.empty:
         st.info("スプレッドシートに最新の勝負レースデータがありません。")
 
 # ==========================================
@@ -1374,7 +1475,9 @@ elif menu == "👑 G1専用予想":
         label_visibility="collapsed",
         key="radio_g1_baba",
     )
-    st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True
+    )
     b_val_g1 = (
         sel_baba_g1.replace("☀️ ", "")
         .replace("⛅ ", "")
@@ -1382,16 +1485,13 @@ elif menu == "👑 G1専用予想":
         .replace("🌀 ", "")
     )
 
-    if (
-        df_g1 is not None
-        and not df_g1.empty
-        and "日付" in df_g1.columns
-    ):
+    if df_g1 is not None and not df_g1.empty and "日付" in df_g1.columns:
         latest_g1_date = df_g1["日付"].max()
         df_g1_latest = df_g1[df_g1["日付"] == latest_g1_date]
 
-        # 🌟 選択した馬場状態でフィルタリング（馬場列が存在する場合）
-        if "馬場" in df_g1_latest.columns and (df_g1_latest["馬場"] == b_val_g1).any():
+        if "馬場" in df_g1_latest.columns and (
+            df_g1_latest["馬場"] == b_val_g1
+        ).any():
             df_g1_disp = df_g1_latest[df_g1_latest["馬場"] == b_val_g1]
         else:
             df_g1_disp = df_g1_latest
@@ -1406,9 +1506,17 @@ elif menu == "👑 G1専用予想":
                 & (df_g1_disp["レース名"] == r["レース名"])
             ]
 
-            judge_str = str(sub_df["判断"].iloc[0]) if "判断" in sub_df.columns and len(sub_df) > 0 else ""
+            judge_str = (
+                str(sub_df["判断"].iloc[0])
+                if "判断" in sub_df.columns and len(sub_df) > 0
+                else ""
+            )
             is_buy = "買い" in judge_str
-            badge_html = f'<span class="status-badge-buy" style="margin-bottom:0; padding:4px 10px;">🎯 AI判定：買い勝負（{b_val_g1}）</span>' if is_buy else f'<span class="status-badge-skip" style="margin-bottom:0; padding:4px 10px;">✋ AI判定：見送り (参考買い目・{b_val_g1})</span>'
+            badge_html = (
+                f'<span class="status-badge-buy" style="margin-bottom:0; padding:4px 10px;">🎯 AI判定：買い勝負（{b_val_g1}）</span>'
+                if is_buy
+                else f'<span class="status-badge-skip" style="margin-bottom:0; padding:4px 10px;">✋ AI判定：見送り (参考買い目・{b_val_g1})</span>'
+            )
 
             first_jiku = (
                 str(sub_df["軸馬 (◎)"].iloc[0])
@@ -1447,7 +1555,11 @@ elif menu == "👑 G1専用予想":
             for b_i, (_, row_b) in enumerate(sub_df.head(6).iterrows()):
                 with cols_grid[b_i]:
                     k_name = row_b.get("券種", "買い目")
-                    border_c = "#6366F1" if "単" in k_name else ("#10B981" if "ワイド" in k_name else "#F59E0B")
+                    border_c = (
+                        "#6366F1"
+                        if "単" in k_name
+                        else ("#10B981" if "ワイド" in k_name else "#F59E0B")
+                    )
                     st.markdown(
                         f"""
                         <div style="background:#1B2338; padding:8px 10px; border-radius:8px; border-left:3px solid {border_c}; margin-bottom:6px;">
@@ -1458,16 +1570,34 @@ elif menu == "👑 G1専用予想":
                         unsafe_allow_html=True,
                     )
 
-            with st.expander(f"📋 このG1レースの全買い目・詳細データを確認（{b_val_g1}）"):
-                disp_cols = [c for c in ["馬場", "券種", "買い目", "相手馬", "想定オッズ", "推奨金額(円)", "判断"] if c in sub_df.columns]
-                st.dataframe(sub_df[disp_cols], use_container_width=True, hide_index=True)
+            with st.expander(
+                f"📋 このG1レースの全買い目・詳細データを確認（{b_val_g1}）"
+            ):
+                disp_cols = [
+                    c
+                    for c in [
+                        "馬場",
+                        "券種",
+                        "買い目",
+                        "相手馬",
+                        "想定オッズ",
+                        "推奨金額(円)",
+                        "判断",
+                    ]
+                    if c in sub_df.columns
+                ]
+                st.dataframe(
+                    sub_df[disp_cols], use_container_width=True, hide_index=True
+                )
 
             st.markdown("</div>", unsafe_allow_html=True)
     else:
-        st.info("スプレッドシート「G1予想」に最新のG1データがありません。土曜日にターミナルで `g1.py` を実行するか、日曜朝の `run.py` 実行をお待ちください。")
+        st.info(
+            "スプレッドシート「G1予想」に最新のG1データがありません。土曜日にターミナルで `g1.py` を実行するか、日曜朝の `run.py` 実行をお待ちください。"
+        )
 
 # ==========================================
-# 🏇 画面 3: 全レース出馬表
+# 🏇 画面 3: 全レース出馬表（見送り理由＆買い条件の表示強化）
 # ==========================================
 elif menu == "🏇 全レース出馬表":
     st.markdown(
@@ -1490,7 +1620,9 @@ elif menu == "🏇 全レース出馬表":
         horizontal=True,
         label_visibility="collapsed",
     )
-    st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True
+    )
     b_val = (
         sel_baba.replace("☀️ ", "")
         .replace("⛅ ", "")
@@ -1519,7 +1651,9 @@ elif menu == "🏇 全レース出馬表":
         for i, venue in enumerate(venues):
             with tabs[i]:
                 venue_df = df_today_disp[df_today_disp["会場"] == venue]
-                race_names = sorted(venue_df["レース名"].unique(), key=extract_r_num)
+                race_names = sorted(
+                    venue_df["レース名"].unique(), key=extract_r_num
+                )
 
                 for rname in race_names:
                     sub_df = venue_df[venue_df["レース名"] == rname].copy()
@@ -1532,19 +1666,83 @@ elif menu == "🏇 全レース出馬表":
                     with st.expander(f"🏁 {venue} {rname} （{cond}）"):
                         if "レース判定" in sub_df.columns:
                             r_judge = str(sub_df.iloc[0]["レース判定"])
-                            r_detail = str(sub_df.iloc[0].get("レース判定詳細", ""))
+                            r_detail = str(
+                                sub_df.iloc[0].get("レース判定詳細", "")
+                            )
+
                             if "買い" in r_judge:
                                 st.markdown(
-                                    f'<div class="status-badge-buy">🎯 {r_judge} ｜'
-                                    f" {r_detail}</div>",
+                                    f'<div class="status-badge-buy">🎯 {r_judge} ｜ {r_detail}</div>',
                                     unsafe_allow_html=True,
                                 )
                             else:
-                                st.markdown(
-                                    f'<div class="status-badge-skip">✋ {r_judge} ｜ 理由:'
-                                    f" {r_detail}</div>",
-                                    unsafe_allow_html=True,
+                                # 🌟 見送り理由と「買いへの転換条件」をスマートに分離
+                                reason_text = r_detail
+                                buy_cond_text = ""
+                                m_cond = re.search(
+                                    r"【(?:直前オッズ変化|買い条件):\s*(.*?)】",
+                                    r_detail,
                                 )
+                                if m_cond:
+                                    buy_cond_text = m_cond.group(1).strip()
+                                    reason_text = r_detail[
+                                        : m_cond.start()
+                                    ].strip()
+
+                                # df_skip（本日勝負レースの見送り一覧）からも補完
+                                if (
+                                    (
+                                        not buy_cond_text
+                                        or buy_cond_text == "-"
+                                    )
+                                    and df_skip is not None
+                                    and not df_skip.empty
+                                ):
+                                    if (
+                                        "レース名" in df_skip.columns
+                                        and "競馬場" in df_skip.columns
+                                    ):
+                                        match_skip = df_skip[
+                                            (df_skip["競馬場"] == venue)
+                                            & (df_skip["レース名"] == rname)
+                                        ]
+                                        if not match_skip.empty:
+                                            for c_cand in [
+                                                "こうなれば買い（直前のオッズ変動等）",
+                                                "こうなれば買い（転換条件）",
+                                                "こうなれば買い",
+                                            ]:
+                                                if (
+                                                    c_cand
+                                                    in match_skip.columns
+                                                ):
+                                                    val_cand = str(
+                                                        match_skip.iloc[0][
+                                                            c_cand
+                                                        ]
+                                                    ).strip()
+                                                    if (
+                                                        val_cand
+                                                        and val_cand != "-"
+                                                    ):
+                                                        buy_cond_text = val_cand
+                                                        break
+
+                                if buy_cond_text and buy_cond_text != "-":
+                                    st.markdown(
+                                        f"""
+                                        <div class="status-badge-skip-box">
+                                            <div class="skip-reason-line">✋ <b>{r_judge}</b> ｜ 理由: {reason_text}</div>
+                                            <div class="skip-buy-condition">🔄 <b>こうなれば買い</b>: {buy_cond_text}</div>
+                                        </div>
+                                        """,
+                                        unsafe_allow_html=True,
+                                    )
+                                else:
+                                    st.markdown(
+                                        f'<div class="status-badge-skip">✋ {r_judge} ｜ 理由: {reason_text}</div>',
+                                        unsafe_allow_html=True,
+                                    )
 
                         disp_cols = [
                             "馬番",
@@ -1560,7 +1758,9 @@ elif menu == "🏇 全レース出馬表":
                         if "評価" in sub_df.columns:
                             sub_df = sub_df.rename(columns={"評価": "印"})
 
-                        actual_cols = [c for c in disp_cols if c in sub_df.columns]
+                        actual_cols = [
+                            c for c in disp_cols if c in sub_df.columns
+                        ]
                         display_df = sub_df[actual_cols].copy()
                         display_df["馬番"] = pd.to_numeric(
                             display_df["馬番"], errors="coerce"
@@ -1609,7 +1809,12 @@ elif menu == "🏇 全レース出馬表":
                                             val = f"{float(val):.1f}"
                                         elif col == "AIスコア":
                                             val = f"{float(val):.2f}"
-                                        elif col in ["RL", "CL", "人気", "馬番"]:
+                                        elif col in [
+                                            "RL",
+                                            "CL",
+                                            "人気",
+                                            "馬番",
+                                        ]:
                                             val = f"{int(float(val))}"
                                     except:
                                         pass
@@ -1617,7 +1822,11 @@ elif menu == "🏇 全レース出馬表":
                                     val = "-"
 
                                 align = "left" if col == "馬名" else "center"
-                                nowrap = "white-space: nowrap;" if col != "馬名" else ""
+                                nowrap = (
+                                    "white-space: nowrap;"
+                                    if col != "馬名"
+                                    else ""
+                                )
                                 html_table += f"<td style='padding: 8px 6px; text-align: {align}; {nowrap}'>{val}</td>"
                             html_table += "</tr>"
                         html_table += "</tbody></table></div>"
@@ -1631,7 +1840,8 @@ elif menu == "🏇 全レース出馬表":
 # ==========================================
 elif menu == "💰 収支入力・管理":
     st.markdown(
-        '<div class="main-title">日次実収支の記録</div>', unsafe_allow_html=True
+        '<div class="main-title">日次実収支の記録</div>',
+        unsafe_allow_html=True,
     )
     st.markdown(
         '<div class="last-update">一日の終わりに、今日の購入実績（金額・レース数・的中数）を入力して保存してください</div>',
@@ -1661,7 +1871,11 @@ elif menu == "💰 収支入力・管理":
                 unsafe_allow_html=True,
             )
             usr_inv = st.number_input(
-                "総購入額", min_value=0, value=0, step=100, label_visibility="collapsed"
+                "総購入額",
+                min_value=0,
+                value=0,
+                step=100,
+                label_visibility="collapsed",
             )
         with c_in2:
             st.markdown(
@@ -1670,7 +1884,11 @@ elif menu == "💰 収支入力・管理":
                 unsafe_allow_html=True,
             )
             usr_ret = st.number_input(
-                "総払戻額", min_value=0, value=0, step=100, label_visibility="collapsed"
+                "総払戻額",
+                min_value=0,
+                value=0,
+                step=100,
+                label_visibility="collapsed",
             )
 
         st.markdown(
@@ -1718,7 +1936,9 @@ elif menu == "💰 収支入力・管理":
                     try:
                         ws = ss.worksheet("日次収支")
                     except:
-                        ws = ss.add_worksheet(title="日次収支", rows="500", cols="10")
+                        ws = ss.add_worksheet(
+                            title="日次収支", rows="500", cols="10"
+                        )
                         ws.append_row([
                             "日付",
                             "AI投資額",
@@ -1758,7 +1978,9 @@ elif menu == "💰 収支入力・管理":
 
                     def get_col(name, default_idx):
                         return (
-                            headers.index(name) + 1 if name in headers else default_idx
+                            headers.index(name) + 1
+                            if name in headers
+                            else default_idx
                         )
 
                     col_u_inv = get_col("ユーザー投資額", 8)
@@ -1952,15 +2174,15 @@ elif menu == "💻 ターミナル操作マニュアル":
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
-# 🗄️ 過去データ分析（最新ハイブリッド実績・完全反映）
+# 🗄️ 過去データ分析（最新ハイブリッド確定実績）
 # ==========================================
 elif menu == "🗄️ 過去データ分析":
     st.markdown(
-        '<div class="main-title">【新】過去データバックテスト分析（2022〜2026年）</div>',
+        '<div class="main-title">過去データバックテスト分析（2022〜2026年・5年間検証）</div>',
         unsafe_allow_html=True,
     )
     st.markdown(
-        '<div class="last-update">5年間・21万行の実データ検証による【最終確定】勝負条件</div>',
+        '<div class="last-update">新馬戦完全除外 ＆ 芝・ダート黄金ゾーンに絞り込んだ【確定】運用実績</div>',
         unsafe_allow_html=True,
     )
 
@@ -1971,29 +2193,29 @@ elif menu == "🗄️ 過去データ分析":
             <thead>
                 <tr style="background-color: #0E1322; color: #94A3B8; border-bottom: 2px solid #1E273D; text-align: left;">
                     <th style="padding: 12px 14px; font-weight: 600;">トラック</th>
-                    <th style="padding: 12px 14px; font-weight: 600;">最終確定ルール</th>
+                    <th style="padding: 12px 14px; font-weight: 600;">厳選勝負ルール</th>
                     <th style="padding: 12px 14px; font-weight: 600;">推奨買い目</th>
-                    <th style="padding: 12px 14px; font-weight: 600;">期待値・安定度</th>
+                    <th style="padding: 12px 14px; font-weight: 600;">期待値・バックテスト実績</th>
                 </tr>
             </thead>
             <tbody>
                 <tr style="border-bottom: 1px solid #1E273D; vertical-align: top;">
                     <td style="padding: 14px; font-weight: 700; white-space: nowrap;">🟢 芝</td>
-                    <td style="padding: 14px; line-height: 1.6;"><b>先行力重視</b> × 1人気2.0〜3.5倍<br><br><span style="font-weight:700;">※同型激突（先行4頭以上）は徹底見送り</span></td>
+                    <td style="padding: 14px; line-height: 1.6;"><b>先行力重視</b> × 1人気2.0〜3.5倍<br><br><span style="font-weight:700;">※同型激突（先行4頭以上）・新馬戦除外</span></td>
                     <td style="padding: 14px; line-height: 1.6;">👑 ハイブリッド（計800円）<br><span style="color: #94A3B8;">ワイド5点 (500円) ＋ 馬単3点 (300円)</span></td>
-                    <td style="padding: 14px; line-height: 1.6;">回収率 <b>117.0%</b> ｜ 的中率 <b>55.1%</b><br><span style="color: #10B981; font-weight:700;">最大 8連敗</span>（純益 +15.5万円）</td>
+                    <td style="padding: 14px; line-height: 1.6;">回収率 <b>117.0%</b> ｜ 的中率 <b>55.1%</b><br><span style="color: #10B981; font-weight:700;">最大 8連敗</span>（守りのワイドで元本死守）</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #1E273D; vertical-align: top;">
                     <td style="padding: 14px; font-weight: 700; white-space: nowrap;">🟤 ダート</td>
-                    <td style="padding: 14px; line-height: 1.6;"><b>特注血統（米国系）</b> × 1人気3.5倍未満<br>× 軸中外枠</td>
+                    <td style="padding: 14px; line-height: 1.6;"><b>特注血統（米国系）</b> × 1人気3.5倍未満<br>× 軸中外枠（1〜2倍台大本命ゾーン直撃）</td>
                     <td style="padding: 14px; line-height: 1.6;">👑 ハイブリッド（計800円）<br><span style="color: #94A3B8;">ワイド5点 (500円) ＋ 馬単3点 (300円)</span></td>
-                    <td style="padding: 14px; line-height: 1.6;">回収率 <b>118.4%</b> ｜ 的中率 <b>56.1%</b><br><span style="color: #10B981; font-weight:700;">最大 10連敗</span>（純益 +9.3万円）</td>
+                    <td style="padding: 14px; line-height: 1.6;">回収率 <b>173.7%</b> ｜ 的中率 <b>56.1%</b><br><span style="color: #10B981; font-weight:700;">純利益 +37.5万円</span>（収益の主軸エンジン）</td>
                 </tr>
                 <tr style="vertical-align: top;">
                     <td style="padding: 14px; font-weight: 700; white-space: nowrap;">🌐 総合</td>
-                    <td style="padding: 14px; font-weight: 700; line-height: 1.6;">上記2大条件 ＋ 本線5.0倍未満・同型激突の完全排除</td>
+                    <td style="padding: 14px; font-weight: 700; line-height: 1.6;">上記2大条件 ＋ 本線5.0倍未満・新馬戦の完全排除</td>
                     <td style="padding: 14px; font-weight: 700; line-height: 1.6;">👑 ハイブリッド投資<br>（ワイド5点＋馬単3点 / 計800円）</td>
-                    <td style="padding: 14px; font-weight: 700; line-height: 1.6;">5年通算回収率 <span style="color:#6366F1; font-size:1.1rem;">117.5%</span> ｜ 的中率 55.5%<br><span style="color: #10B981;">通算純利益 +249,118円</span>（最大10連敗）</td>
+                    <td style="padding: 14px; font-weight: 700; line-height: 1.6;">5年通算回収率 <span style="color:#6366F1; font-size:1.15rem; font-weight:800;">130.3%</span> ｜ 的中率 55.5%<br><span style="color: #10B981; font-weight:800;">通算純利益 +500,640円</span>（1日4〜6鞍厳選）</td>
                 </tr>
             </tbody>
         </table>
