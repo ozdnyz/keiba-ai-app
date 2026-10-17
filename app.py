@@ -1431,11 +1431,37 @@ elif menu == "🎯 厳選勝負レース":
                 st.dataframe(df_skip, use_container_width=True, hide_index=True)
     elif df_target is None or df_target.empty:
         st.info("スプレッドシートに最新の勝負レースデータがありません。")
-
 # ==========================================
-# 📝 画面 3: レジまぐ投稿内容（白枠デザイン・自動日付＆レース連動）
+# 📝 画面 3: レジまぐ投稿内容（文字サイズ均一化・巨大化防止完全対応）
 # ==========================================
 elif menu == "📝 レジまぐ投稿内容":
+    st.markdown(
+        """
+    <style>
+    .rejimagu-white-box {
+        background-color: #F4F5F7 !important;
+        color: #1F2937 !important;
+        border-radius: 12px !important;
+        padding: 1.35rem 1.6rem !important;
+        font-size: 0.95rem !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        line-height: 1.8 !important;
+        white-space: pre-wrap !important;
+        margin-bottom: 0.6rem !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+        border: none !important;
+    }
+    .rejimagu-white-box, .rejimagu-white-box * {
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
+        line-height: 1.8 !important;
+        margin: 0 !important;
+    }
+    </style>
+    """,
+        unsafe_allow_html=True,
+    )
+
     col_r_left, col_r_right = st.columns([8, 2])
     with col_r_left:
         st.markdown(
@@ -1474,10 +1500,8 @@ elif menu == "📝 レジまぐ投稿内容":
             r_name = str(r_info["レース名"])
             r_cond = str(r_info["条件"])
 
-            # 無料エリアのレース一覧行（ご指定フォーマット: ・[東京] 3R 2歳新馬）
             race_list_lines.append(f"・[{v_name}] {r_name}")
 
-            # 有料エリアの詳細買い目構築
             sub_t = df_t_latest[
                 (df_t_latest["競馬場"] == v_name)
                 & (df_t_latest["レース名"] == r_name)
@@ -1503,17 +1527,21 @@ elif menu == "📝 レジまぐ投稿内容":
             ]
 
             block_lines = [
-                f"==================================================",
+                "==================================================",
                 f"■ 勝負第{idx_r}鞍：[{v_name}] {r_name}（{r_cond}）",
-                f"==================================================",
+                "==================================================",
                 f"【軸馬】 {jiku_str}",
             ]
 
-            # 相手馬一覧の抽出
             aite_names = []
             for _, a_row in sub_t.iterrows():
                 a_txt = str(a_row.get("相手馬", "")).strip()
-                if a_txt and a_txt not in aite_names and "固定" not in a_txt and "防衛" not in a_txt:
+                if (
+                    a_txt
+                    and a_txt not in aite_names
+                    and "固定" not in a_txt
+                    and "防衛" not in a_txt
+                ):
                     aite_names.append(a_txt)
             if aite_names:
                 block_lines.append(f"【相手】 {' / '.join(aite_names[:5])}")
@@ -1531,7 +1559,9 @@ elif menu == "📝 レジまぐ投稿内容":
                 u_kaime = " , ".join(
                     [f"{row_u['買い目']}" for _, row_u in u_df.iterrows()]
                 )
-                block_lines.append(f"◆ 攻め（馬単1着固定 {len(u_df)}点 / 各100円）")
+                block_lines.append(
+                    f"◆ 攻め（馬単1着固定 {len(u_df)}点 / 各100円）"
+                )
                 block_lines.append(f"  {u_kaime}")
 
             if not o_df.empty:
@@ -1540,10 +1570,14 @@ elif menu == "📝 レジまぐ投稿内容":
                         f"◆ 推奨（{row_o.get('券種', '買い目')}）：{row_o['買い目']} （{row_o.get('相手馬', '')}）"
                     )
 
-            block_lines.append(f"\n推奨投資：計{len(sub_t)}点（{len(sub_t)*100:,}円）")
+            block_lines.append(
+                f"\n推奨投資：計{len(sub_t)}点（{len(sub_t)*100:,}円）"
+            )
             paid_area_blocks.append("\n".join(block_lines))
 
-    elif df_today is not None and not df_today.empty and "日付" in df_today.columns:
+    elif (
+        df_today is not None and not df_today.empty and "日付" in df_today.columns
+    ):
         post_date_str = str(df_today["日付"].max())
 
     race_list_text = (
@@ -1552,10 +1586,10 @@ elif menu == "📝 レジまぐ投稿内容":
         else "・現在、本日の対象勝負レースはありません（run.pyを実行してください）"
     )
 
-    # ① 記事タイトル本文
-    title_text = f"【{post_date_str}】競馬AI-Core 厳選勝負レースパック（全{race_count}鞍）"
+    title_text = (
+        f"【{post_date_str}】競馬AI-Core 厳選勝負レースパック（全{race_count}鞍）"
+    )
 
-    # ② 無料エリア本文（ご指定の文面・構成に完全準拠）
     free_text = f"""【競馬AI-Core 厳選勝負レースパック】
 開催日：{post_date_str}
 提供鞍数：全{race_count}鞍
@@ -1583,7 +1617,6 @@ elif menu == "📝 レジまぐ投稿内容":
 よろしくお願いいたします🙇
 --------------------------------------------------"""
 
-    # ③ 有料エリア本文
     if paid_area_blocks:
         paid_races_str = "\n\n".join(paid_area_blocks)
         paid_text = f"""ご購読ありがとうございます！
@@ -1597,13 +1630,13 @@ elif menu == "📝 レジまぐ投稿内容":
     else:
         paid_text = "現在、抽出された勝負レースがありません。ターミナルで run.py を実行後、「🔄 最新データ反映」ボタンを押してください。"
 
-    # 画像通りの白枠ボックス表示 ＆ ワンクリックコピー機能
+    # 🌟 <pre>タグ出力により、--- や === による自動見出し巨大化を完全にブロック
     st.markdown(
         '<div class="rejimagu-sec-title">① 記事タイトル</div>',
         unsafe_allow_html=True,
     )
     st.markdown(
-        f'<div class="rejimagu-white-box">{html_lib.escape(title_text)}</div>',
+        f'<pre class="rejimagu-white-box">{html_lib.escape(title_text)}</pre>',
         unsafe_allow_html=True,
     )
     with st.expander("📋 ① 記事タイトルをワンクリックコピー"):
@@ -1614,7 +1647,7 @@ elif menu == "📝 レジまぐ投稿内容":
         unsafe_allow_html=True,
     )
     st.markdown(
-        f'<div class="rejimagu-white-box">{html_lib.escape(free_text)}</div>',
+        f'<pre class="rejimagu-white-box">{html_lib.escape(free_text)}</pre>',
         unsafe_allow_html=True,
     )
     with st.expander("📋 ② 無料エリア本文をワンクリックコピー"):
@@ -1625,7 +1658,7 @@ elif menu == "📝 レジまぐ投稿内容":
         unsafe_allow_html=True,
     )
     st.markdown(
-        f'<div class="rejimagu-white-box">{html_lib.escape(paid_text)}</div>',
+        f'<pre class="rejimagu-white-box">{html_lib.escape(paid_text)}</pre>',
         unsafe_allow_html=True,
     )
     with st.expander("📋 ③ 有料エリア本文をワンクリックコピー"):
