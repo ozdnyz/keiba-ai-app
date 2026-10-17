@@ -1718,7 +1718,7 @@ elif menu == "👑 G1専用予想":
                 if "判断" in sub_df.columns and len(sub_df) > 0
                 else ""
             )
-            is_buy = "買い" in judge_str
+            is_buy = judge_str.strip().startswith("買い")
             badge_html = (
                 f'<span class="status-badge-buy" style="margin-bottom:0; padding:4px 10px;">🎯 AI判定：買い勝負（{b_val_g1}）</span>'
                 if is_buy
