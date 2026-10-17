@@ -1432,30 +1432,44 @@ elif menu == "🎯 厳選勝負レース":
     elif df_target is None or df_target.empty:
         st.info("スプレッドシートに最新の勝負レースデータがありません。")
 # ==========================================
-# 📝 画面 3: レジまぐ投稿内容（文字サイズ均一化・巨大化防止完全対応）
+# 📝 画面 3: レジまぐ投稿内容（白枠・右上にコピーマーク直結版）
 # ==========================================
 elif menu == "📝 レジまぐ投稿内容":
     st.markdown(
         """
     <style>
-    .rejimagu-white-box {
-        background-color: #F4F5F7 !important;
-        color: #1F2937 !important;
+    /* 🌟 レジまぐ投稿枠：白背景・黒文字・右上にコピーボタン常設 */
+    div[data-testid="stCodeBlock"]:has(code[class*="language-text"]),
+    div[data-testid="stCode"]:has(code[class*="language-text"]) {
+        background-color: #F8FAFC !important;
+        border: 1px solid #E2E8F0 !important;
         border-radius: 12px !important;
-        padding: 1.35rem 1.6rem !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
+        margin-bottom: 1.2rem !important;
+    }
+    div[data-testid="stCodeBlock"]:has(code[class*="language-text"]) pre,
+    div[data-testid="stCode"]:has(code[class*="language-text"]) pre {
+        background-color: transparent !important;
+        padding: 1.2rem 1.4rem !important;
+    }
+    div[data-testid="stCodeBlock"]:has(code[class*="language-text"]) code,
+    div[data-testid="stCode"]:has(code[class*="language-text"]) code {
+        color: #1E293B !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
         font-size: 0.95rem !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
         line-height: 1.8 !important;
         white-space: pre-wrap !important;
-        margin-bottom: 0.6rem !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
-        border: none !important;
     }
-    .rejimagu-white-box, .rejimagu-white-box * {
-        font-size: 0.95rem !important;
-        font-weight: 500 !important;
-        line-height: 1.8 !important;
-        margin: 0 !important;
+    div[data-testid="stCodeBlock"]:has(code[class*="language-text"]) button {
+        color: #475569 !important;
+        background-color: rgba(255, 255, 255, 0.9) !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 6px !important;
+    }
+    div[data-testid="stCodeBlock"]:has(code[class*="language-text"]) button:hover {
+        background-color: #FFFFFF !important;
+        color: #0F172A !important;
+        border-color: #6366F1 !important;
     }
     </style>
     """,
@@ -1630,39 +1644,24 @@ elif menu == "📝 レジまぐ投稿内容":
     else:
         paid_text = "現在、抽出された勝負レースがありません。ターミナルで run.py を実行後、「🔄 最新データ反映」ボタンを押してください。"
 
-    # 🌟 <pre>タグ出力により、--- や === による自動見出し巨大化を完全にブロック
+    # 🌟 余計なプレビューや折りたたみは無くし、2枚目の白枠（右上にコピーボタンあり）のみを直接表示
     st.markdown(
         '<div class="rejimagu-sec-title">① 記事タイトル</div>',
         unsafe_allow_html=True,
     )
-    st.markdown(
-        f'<pre class="rejimagu-white-box">{html_lib.escape(title_text)}</pre>',
-        unsafe_allow_html=True,
-    )
-    with st.expander("📋 ① 記事タイトルをワンクリックコピー"):
-        st.code(title_text, language="text")
+    st.code(title_text, language="text")
 
     st.markdown(
         '<div class="rejimagu-sec-title">② 無料エリア本文</div>',
         unsafe_allow_html=True,
     )
-    st.markdown(
-        f'<pre class="rejimagu-white-box">{html_lib.escape(free_text)}</pre>',
-        unsafe_allow_html=True,
-    )
-    with st.expander("📋 ② 無料エリア本文をワンクリックコピー"):
-        st.code(free_text, language="text")
+    st.code(free_text, language="text")
 
     st.markdown(
         '<div class="rejimagu-sec-title">③ 有料エリア本文</div>',
         unsafe_allow_html=True,
     )
-    st.markdown(
-        f'<pre class="rejimagu-white-box">{html_lib.escape(paid_text)}</pre>',
-        unsafe_allow_html=True,
-    )
-    with st.expander("📋 ③ 有料エリア本文をワンクリックコピー"):
-        st.code(paid_text, language="text")
+    st.code(paid_text, language="text")
             # ==========================================
 # 👑 画面 4: G1専用予想（馬場切り替えボタン対応）
 # ==========================================
